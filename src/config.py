@@ -1,9 +1,8 @@
 """
 Configuración de la aplicación usando Pydantic v2
 """
-import os
-from typing import List, Optional
-from pydantic import Field, field_validator
+from typing import Optional
+from pydantic import Field, field_validator, PostgresDsn
 from pydantic_settings import BaseSettings as PydanticBaseSettings
 
 
@@ -19,14 +18,17 @@ class Settings(PydanticBaseSettings):
     # Configuración del servidor
     FLASK_HOST: str = Field(default="0.0.0.0", description="Host del servidor")
     FLASK_PORT: int = Field(default=5000, ge=1, le=65535, description="Puerto del servidor")
-    
-    # Configuración de la base de datos
-    FLASK_DATABASE_URL: str = Field(pattern=r"^sqlite:///.*|postgresql://.*", default="sqlite:///reserva_espacios.db", description="URL de la base de datos")
-    
+
     # Configuración de logging
     FLASK_LOG_LEVEL: str = Field(default="INFO", description="Nivel de logging")
     FLASK_LOG_FILE: Optional[str] = Field(default=None, description="Archivo de log")
     
+    # Configuración de base de datos
+    DATABASE_URL: PostgresDsn = Field(default="postgresql://postgres:postgres@localhost:5432/reserva_espacios_um", description="URL de conexión a la base de datos")
+    DATABASE_ECHO: bool = Field(default=False, description="Mostrar queries SQL en logs")
+    DATABASE_POOL_SIZE: int = Field(default=5, ge=1, le=20, description="Tamaño del pool de conexiones")
+    DATABASE_MAX_OVERFLOW: int = Field(default=10, ge=0, le=30, description="Overflow máximo del pool")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -41,14 +43,6 @@ class Settings(PydanticBaseSettings):
         if v.upper() not in valid_levels:
             raise ValueError(f"log_level debe ser uno de: {', '.join(valid_levels)}")
         return v.upper()
-
-# Instancia global de configuración
-settings = Settings()
-
-
-def get_settings() -> Settings:
-    """Función para obtener la configuración (útil para testing)"""
-    return settings
 
 
 # Configuración de desarrollo
@@ -69,18 +63,10 @@ class ProductionSettings(Settings):
 class TestingSettings(Settings):
     """Configuración específica para testing"""
     FLASK_DEBUG: bool = True
-    FLASK_DATABASE_URL: str = "sqlite:///:memory:"
+    DATABASE_URL: str = "sqlite:///:memory:"
+    DATABASE_ECHO: bool = False
     FLASK_LOG_LEVEL: str = "DEBUG"
 
 
-def get_settings_by_env(env: str = None) -> Settings:
-    """Obtiene configuración basada en el entorno"""
-    if env is None:
-        env = os.getenv("FLASK_ENVIRONMENT", "development")
-    
-    if env == "production":
-        return ProductionSettings()
-    elif env == "testing":
-        return TestingSettings()
-    else:
-        return DevelopmentSettings()
+# Instancia global de configuración
+settings = Settings()
