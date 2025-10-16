@@ -6,8 +6,9 @@ from flask import Flask, jsonify
 from config import settings
 from database import db
 
-# Importar blueprints
-from endpoints.health import health_bp
+# Importo blueprints
+from health.routes import health_bp
+from spaces.routes import spaces_bp
 
 def create_app(config_instance=None):
     """
@@ -33,7 +34,7 @@ def create_app(config_instance=None):
         'PORT': config_instance.FLASK_PORT,
         'LOG_LEVEL': config_instance.FLASK_LOG_LEVEL,
         # Configuración de base de datos
-        'SQLALCHEMY_DATABASE_URI': config_instance.DATABASE_URL,
+        'SQLALCHEMY_DATABASE_URI': str(config_instance.DATABASE_URL),
         'SQLALCHEMY_TRACK_MODIFICATIONS': False,
         'SQLALCHEMY_ECHO': config_instance.DATABASE_ECHO,
         'SQLALCHEMY_ENGINE_OPTIONS': {
@@ -46,24 +47,12 @@ def create_app(config_instance=None):
     db.init_app(app)
 
     """
-    Registrar blueprints
+    Registro de blueprints
     Te facilito el conceptito de blueprint :)
     https://flask.palletsprojects.com/en/stable/blueprints/ 
     """
     app.register_blueprint(health_bp)
-    
-    @app.route('/')
-    def hello_world():
-        """
-        Endpoint de prueba.
-        
-        Returns:
-            dict: Mensaje de saludo en formato JSON
-        """
-        return jsonify({
-            'message': 'Hello World!',
-            'status': 'success'
-        })
+    app.register_blueprint(spaces_bp)
     
     @app.errorhandler(404)
     def not_found(error):
