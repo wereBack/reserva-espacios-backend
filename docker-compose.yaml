@@ -1,0 +1,9 @@
+services:
+  backend-app:
+    container_name: reserva-espacios
+    build:
+      dockerfile: ./Dockerfile.dev
+    env_file:
+      - ./.env
+    ports:
+      - "5000:5000"
