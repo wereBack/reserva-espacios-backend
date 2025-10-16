@@ -1,0 +1,22 @@
+FROM python:3.13-slim
+
+# Variables de entorno
+ENV APP_HOME=/app
+
+# Directorio de trabajo
+WORKDIR $APP_HOME
+
+# Copiar el codigo fuente
+COPY ./src $APP_HOME
+
+# Copiar el archivo de dependencias
+COPY ./requirements.txt $APP_HOME
+
+# Instalar las dependencias
+RUN pip install -r ./requirements.txt
+
+# Exponer el puerto
+EXPOSE 5000
+
+# Comando para ejecutar la aplicacion
+CMD ["python", "app.py"]
