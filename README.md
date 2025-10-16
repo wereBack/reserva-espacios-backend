@@ -34,9 +34,6 @@ FLASK_SECRET_KEY=tu-clave-secreta-aqui
 FLASK_HOST=0.0.0.0
 FLASK_PORT=5000
 
-# Configuración de la base de datos
-FLASK_DATABASE_URL=sqlite:///reserva_espacios.db
-
 # Configuración de logging
 FLASK_LOG_LEVEL=INFO
 ```
