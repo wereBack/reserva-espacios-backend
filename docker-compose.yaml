@@ -1,5 +1,5 @@
 services:
-  postgres:
+  postgres-db:
     image: postgres:18-alpine
     container_name: reserva_espacios_db
     environment:
@@ -28,7 +28,7 @@ services:
     volumes:
       - ./src:/app
     depends_on:
-      postgres:
+      postgres-db:
         condition: service_healthy
 
 volumes:
