@@ -4,6 +4,10 @@ Aplicación Flask principal para el sistema de reserva de espacios.
 
 from flask import Flask, jsonify
 from config import settings
+from database import db
+
+# Importar blueprints
+from endpoints.health import health_bp
 
 def create_app(config_instance=None):
     """
@@ -27,9 +31,26 @@ def create_app(config_instance=None):
         'DEBUG': config_instance.FLASK_DEBUG,
         'HOST': config_instance.FLASK_HOST,
         'PORT': config_instance.FLASK_PORT,
-        'DATABASE_URL': config_instance.FLASK_DATABASE_URL,
         'LOG_LEVEL': config_instance.FLASK_LOG_LEVEL,
+        # Configuración de base de datos
+        'SQLALCHEMY_DATABASE_URI': config_instance.DATABASE_URL,
+        'SQLALCHEMY_TRACK_MODIFICATIONS': False,
+        'SQLALCHEMY_ECHO': config_instance.DATABASE_ECHO,
+        'SQLALCHEMY_ENGINE_OPTIONS': {
+            'pool_size': config_instance.DATABASE_POOL_SIZE,
+            'max_overflow': config_instance.DATABASE_MAX_OVERFLOW,
+        }
     })
+    
+    # Inicializar extensiones
+    db.init_app(app)
+
+    """
+    Registrar blueprints
+    Te facilito el conceptito de blueprint :)
+    https://flask.palletsprojects.com/en/stable/blueprints/ 
+    """
+    app.register_blueprint(health_bp)
     
     @app.route('/')
     def hello_world():
@@ -42,21 +63,6 @@ def create_app(config_instance=None):
         return jsonify({
             'message': 'Hello World!',
             'status': 'success'
-        })
-    
-    @app.route('/health')
-    def health_check():
-        """
-        Endpoint de verificación de salud del servicio.
-        
-        Returns:
-            dict: Estado del servicio en formato JSON
-        """
-        return jsonify({
-            'status': 'healthy',
-            'service': config_instance.FLASK_APP_NAME,
-            'uptime': 'running',
-            'log_level': config_instance.FLASK_LOG_LEVEL
         })
     
     @app.errorhandler(404)
