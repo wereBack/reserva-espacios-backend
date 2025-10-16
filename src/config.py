@@ -1,5 +1,6 @@
 """
 Configuración de la aplicación usando Pydantic v2
+Documentación de Pydantic: https://docs.pydantic.dev/2.12/concepts/pydantic_settings/
 """
 from typing import Optional
 from pydantic import Field, field_validator, PostgresDsn
