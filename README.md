@@ -165,7 +165,61 @@ python src/app.py
 
 ## Base de Datos
 
-La aplicación utiliza PostgreSQL como base de datos principal con SQLAlchemy como ORM. Las tablas se crean automáticamente al inicializar la aplicación.
+La aplicación utiliza PostgreSQL como base de datos principal con SQLAlchemy como ORM. Las migraciones se gestionan con Alembic.
+
+### Migraciones con Alembic
+
+El proyecto utiliza [Alembic](https://alembic.sqlalchemy.org/) para gestionar las migraciones de la base de datos. Alembic está configurado para usar la variable de entorno `DATABASE_URL`.
+
+#### Comandos básicos
+
+```bash
+# Navegar al directorio src
+cd src
+
+# Generar migración automática (detecta cambios en modelos)
+alembic revision --autogenerate -m "Descripción del cambio"
+
+# Aplicar migraciones pendientes
+alembic upgrade head
+
+# Ver estado actual
+alembic current
+
+# Ver historial de migraciones
+alembic history
+
+# Revertir a migración anterior
+alembic downgrade -1
+
+# Revertir a migración específica
+alembic downgrade <revision_id>
+```
+
+#### Flujo de trabajo típico
+
+1. Modificar/agregar modelo
+2. **Si es un modelo nuevo**: Importarlo en `src/alembic/env.py`
+3. **Generar migración**: `alembic revision --autogenerate -m "Descripción"`
+4. **Revisar archivo generado** en `alembic/versions/`
+5. **Aplicar migración**: `alembic upgrade head`
+
+#### Importar modelos nuevos
+
+Cuando agregues un nuevo modelo, debes importarlo en `alembic/env.py` para que Alembic lo detecte:
+
+```python
+# En src/alembic/env.py
+from spaces.models.space import Space
+from spaces.models.zone import Zone
+from modulox.models.nuevo_modelo import NuevoModelo  # ← Agregar aquí
+```
+
+#### Documentación oficial
+
+- [Alembic Documentation](https://alembic.sqlalchemy.org/)
+- [Tutorial de Alembic](https://alembic.sqlalchemy.org/en/latest/tutorial.html)
+- [Autogenerate Documentation](https://alembic.sqlalchemy.org/en/latest/autogenerate.html)
 
 ### Utilidades de Base de Datos
 
