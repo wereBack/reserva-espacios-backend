@@ -14,6 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database import db
 from spaces.models.space import Space
 from spaces.models.zone import Zone
+from spaces.models.polygon import Polygon
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

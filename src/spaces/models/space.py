@@ -2,117 +2,65 @@
 Modelo para la entidad Espacio.
 """
 
-from datetime import datetime, timezone
 from database import db
+from spaces.models.polygon import Polygon, UUID_TYPE
 
 
-class Space(db.Model):
+class Space(Polygon):
     """
-    Modelo que representa un espacio físico disponible para reservar.
+    Espacio reservable dentro de un plano, asociado opcionalmente a una zona.
     """
     __tablename__ = 'spaces'
     
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False, unique=True)
-    zone_id = db.Column(db.Integer, db.ForeignKey('zones.id'), nullable=False)
-    price = db.Column(db.Numeric(10, 2), nullable=False, default=0.0)
-    size_px = db.Column(db.String(20), nullable=False)  # Format: "widthxheight" example: "100x200"
-    x_coordinate = db.Column(db.Integer, nullable=False, default=0)
-    y_coordinate = db.Column(db.Integer, nullable=False, default=0)
-    active = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    id = db.Column(UUID_TYPE, db.ForeignKey('polygons.id'), primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    zone_id = db.Column(UUID_TYPE, db.ForeignKey('zones.id'), nullable=True)
+    active = db.Column(db.Boolean, nullable=False, default=True)
     
     # Relaciones
-    zone = db.relationship('Zone', backref='spaces', lazy=True)
-    reservations = db.relationship('Reservation', backref='space', lazy=True, cascade='all, delete-orphan')
+    zone = db.relationship('Zone', back_populates='spaces', lazy=True)
+    reservations = db.relationship(
+        'Reserva',
+        back_populates='space',
+        lazy=True,
+        cascade='all, delete-orphan',
+    )
+    
+    __mapper_args__ = {
+        'polymorphic_identity': 'space',
+    }
     
     def __repr__(self):
         return f'<Space {self.name}>'
     
-    def get_size_dimensions(self):
-        """
-        Obtiene las dimensiones del espacio en píxeles.
-        
-        Returns:
-            tuple: (ancho, alto) en píxeles
-        """
-        if not self.size_px or 'x' not in self.size_px:
-            return (0, 0)
-        
-        try:
-            width, height = self.size_px.split('x')
-            return (int(width), int(height))
-        except (ValueError, IndexError):
-            return (0, 0)
-    
-    def set_size_dimensions(self, width, height):
-        """
-        Establece las dimensiones del espacio en píxeles.
-        
-        Args:
-            width (int): Ancho en píxeles
-            height (int): Alto en píxeles
-        """
-        self.size_px = f"{width}x{height}"
-    
-    def get_coordinates(self):
-        """
-        Obtiene las coordenadas del espacio.
-        
-        Returns:
-            tuple: (x, y) coordenadas
-        """
-        return (self.x_coordinate, self.y_coordinate)
-    
-    def set_coordinates(self, x, y):
-        """
-        Establece las coordenadas del espacio.
-        
-        Args:
-            x (int): Coordenada X
-            y (int): Coordenada Y
-        """
-        self.x_coordinate = x
-        self.y_coordinate = y
-    
     def to_dict(self):
         """
         Convierte el modelo a diccionario para serialización JSON.
-        
-        Returns:
-            dict: Representación del espacio en formato diccionario
         """
-        return {
-            'id': self.id,
+        data = super().to_dict()
+        data.update({
             'name': self.name,
-            'zone_id': self.zone_id,
-            'price': float(self.price) if self.price else 0.0,
-            'size_px': self.size_px,
-            'x_coordinate': self.x_coordinate,
-            'y_coordinate': self.y_coordinate,
+            'zone_id': str(self.zone_id) if self.zone_id else None,
             'active': self.active,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
-        }
+            'reservations': [reservation.to_dict() for reservation in self.reservations],
+        })
+        return data
     
     @classmethod
     def from_dict(cls, data):
         """
         Crea una instancia del modelo desde un diccionario.
-        
-        Args:
-            data (dict): Datos del espacio
-            
-        Returns:
-            Space: Nueva instancia del modelo
         """
         return cls(
+            kind=data.get('kind'),
+            x=data.get('x'),
+            y=data.get('y'),
+            width=data.get('width'),
+            height=data.get('height'),
+            color=data.get('color'),
+            price=data.get('price'),
+            plano_id=data.get('plano_id'),
             name=data.get('name'),
             zone_id=data.get('zone_id'),
-            price=data.get('price', 0.0),
-            size_px=data.get('size_px'),
-            x_coordinate=data.get('x_coordinate', 0),
-            y_coordinate=data.get('y_coordinate', 0),
-            active=data.get('active', True)
+            active=data.get('active', True),
         )

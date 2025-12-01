@@ -120,7 +120,8 @@ Representa un espacio físico disponible para reservar:
 - `name`: Nombre del espacio
 - `zone_id`: ID de la zona a la que pertenece
 - `price`: Precio del espacio
-- `size_px`: Dimensiones en píxeles (formato: "widthxheight")
+- `width`: Ancho en píxeles
+- `height`: Alto en píxeles
 - `x_coordinate`, `y_coordinate`: Posición en el plano
 - `active`: Estado activo/inactivo
 - `created_at`, `updated_at`: Timestamps
