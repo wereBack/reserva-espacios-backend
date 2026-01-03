@@ -32,7 +32,7 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
     container_name: keycloak
-    command: start-dev
+    command: start-dev --import-realm
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres-db:5432/keycloak
@@ -41,6 +41,8 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_HTTP_CORS_ENABLED: "true"
+    volumes:
+      - ./reserva-espacios-realm.json:/opt/keycloak/data/import/realm.json
     ports:
       - "8080:8080"
     depends_on:
