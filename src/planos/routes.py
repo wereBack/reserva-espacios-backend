@@ -24,6 +24,13 @@ def list_planos():
     planos = Plano.query.all()
     return jsonify([plano_to_full_dict(plano) for plano in planos]), 200
 
+
+@planos_bp.route('/por-evento/<string:evento_id>', methods=['GET'])
+def list_planos_by_evento(evento_id):
+    """Lista planos filtrados por evento."""
+    planos = Plano.query.filter_by(evento_id=evento_id).all()
+    return jsonify([plano_to_full_dict(plano) for plano in planos]), 200
+
 @planos_bp.route('/<string:plano_id>', methods=['GET'])
 def get_plano(plano_id):
     plano = Plano.query.get(plano_id)
