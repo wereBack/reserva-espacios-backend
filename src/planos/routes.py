@@ -7,17 +7,29 @@ from spaces.models.polygon import Polygon
 
 planos_bp = Blueprint('planos_bp', __name__, url_prefix='/planos')
 
+
+def plano_to_full_dict(plano):
+    """Convert plano to dict including spaces and zones."""
+    data = plano.to_dict()
+    # Query spaces and zones for this plano
+    spaces = Space.query.filter_by(plano_id=plano.id).all()
+    zones = Zone.query.filter_by(plano_id=plano.id).all()
+    data['spaces'] = [space.to_dict() for space in spaces]
+    data['zones'] = [zone.to_dict() for zone in zones]
+    return data
+
+
 @planos_bp.route('/', methods=['GET'])
 def list_planos():
     planos = Plano.query.all()
-    return jsonify([plano.to_dict() for plano in planos]), 200
+    return jsonify([plano_to_full_dict(plano) for plano in planos]), 200
 
 @planos_bp.route('/<string:plano_id>', methods=['GET'])
 def get_plano(plano_id):
     plano = Plano.query.get(plano_id)
     if not plano:
         return jsonify({'error': 'Plano no encontrado', 'status': 'error', 'code': 404}), 404
-    return jsonify(plano.to_dict()), 200
+    return jsonify(plano_to_full_dict(plano)), 200
 
 @planos_bp.route('/', methods=['POST'])
 def create_plano():
@@ -69,7 +81,7 @@ def create_plano():
             db.session.add(new_zone)
 
         db.session.commit()
-        return jsonify(new_plano.to_dict()), 201
+        return jsonify(plano_to_full_dict(new_plano)), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e), 'status': 'error', 'code': 500}), 500
@@ -91,9 +103,11 @@ def update_plano(plano_id):
         # Limpiar espacios y zonas existentes (simple replacement strategy)
         # Ojo: esto borra todo y recrea. Idealmente sería update inteligente pero esto basta por ahora.
         # Primero borrar hijos para evitar orphans
-        for space in plano.spaces:
+        existing_spaces = Space.query.filter_by(plano_id=plano.id).all()
+        for space in existing_spaces:
             db.session.delete(space)
-        for zone in plano.zones:
+        existing_zones = Zone.query.filter_by(plano_id=plano.id).all()
+        for zone in existing_zones:
             db.session.delete(zone)
         
         db.session.flush()
@@ -131,7 +145,7 @@ def update_plano(plano_id):
             db.session.add(new_zone)
 
         db.session.commit()
-        return jsonify(plano.to_dict()), 200
+        return jsonify(plano_to_full_dict(plano)), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e), 'status': 'error', 'code': 500}), 500
