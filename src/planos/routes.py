@@ -55,24 +55,9 @@ def create_plano():
         db.session.add(new_plano)
         db.session.flush()
 
-        # Crear Espacios
-        spaces_data = data.get('spaces', [])
-        for space_data in spaces_data:
-            new_space = Space(
-                kind=space_data.get('kind', 'rect'),
-                x=space_data.get('x'),
-                y=space_data.get('y'),
-                width=space_data.get('width'),
-                height=space_data.get('height'),
-                color=space_data.get('color'),
-                name=space_data.get('name'),
-                plano_id=new_plano.id,
-                active=True
-            )
-            db.session.add(new_space)
-
-        # Crear Zonas
+        # Crear Zonas PRIMERO (para tener los IDs disponibles)
         zones_data = data.get('zones', [])
+        zone_id_map = {}  # Mapea frontend ID -> backend ID
         for zone_data in zones_data:
             new_zone = Zone(
                 kind=zone_data.get('kind', 'rect'),
@@ -86,6 +71,31 @@ def create_plano():
                 active=True
             )
             db.session.add(new_zone)
+            db.session.flush()  # Obtener ID generado
+            frontend_id = zone_data.get('id')
+            if frontend_id:
+                zone_id_map[frontend_id] = str(new_zone.id)
+
+        # Crear Espacios CON zone_id
+        spaces_data = data.get('spaces', [])
+        for space_data in spaces_data:
+            # Traducir zone_id del frontend al backend
+            frontend_zone_id = space_data.get('zone_id')
+            backend_zone_id = zone_id_map.get(frontend_zone_id) if frontend_zone_id else None
+            
+            new_space = Space(
+                kind=space_data.get('kind', 'rect'),
+                x=space_data.get('x'),
+                y=space_data.get('y'),
+                width=space_data.get('width'),
+                height=space_data.get('height'),
+                color=space_data.get('color'),
+                name=space_data.get('name'),
+                plano_id=new_plano.id,
+                zone_id=backend_zone_id,
+                active=True
+            )
+            db.session.add(new_space)
 
         db.session.commit()
         return jsonify(plano_to_full_dict(new_plano)), 201
@@ -119,24 +129,9 @@ def update_plano(plano_id):
         
         db.session.flush()
 
-        # Recrear Espacios
-        spaces_data = data.get('spaces', [])
-        for space_data in spaces_data:
-            new_space = Space(
-                kind=space_data.get('kind', 'rect'),
-                x=space_data.get('x'),
-                y=space_data.get('y'),
-                width=space_data.get('width'),
-                height=space_data.get('height'),
-                color=space_data.get('color'),
-                name=space_data.get('name'),
-                plano_id=plano.id,
-                active=True
-            )
-            db.session.add(new_space)
-
-        # Recrear Zonas
+        # Recrear Zonas PRIMERO (para tener los IDs disponibles)
         zones_data = data.get('zones', [])
+        zone_id_map = {}  # Mapea frontend ID -> backend ID
         for zone_data in zones_data:
             new_zone = Zone(
                 kind=zone_data.get('kind', 'rect'),
@@ -150,6 +145,31 @@ def update_plano(plano_id):
                 active=True
             )
             db.session.add(new_zone)
+            db.session.flush()  # Obtener ID generado
+            frontend_id = zone_data.get('id')
+            if frontend_id:
+                zone_id_map[frontend_id] = str(new_zone.id)
+
+        # Recrear Espacios CON zone_id
+        spaces_data = data.get('spaces', [])
+        for space_data in spaces_data:
+            # Traducir zone_id del frontend al backend
+            frontend_zone_id = space_data.get('zone_id')
+            backend_zone_id = zone_id_map.get(frontend_zone_id) if frontend_zone_id else None
+            
+            new_space = Space(
+                kind=space_data.get('kind', 'rect'),
+                x=space_data.get('x'),
+                y=space_data.get('y'),
+                width=space_data.get('width'),
+                height=space_data.get('height'),
+                color=space_data.get('color'),
+                name=space_data.get('name'),
+                plano_id=plano.id,
+                zone_id=backend_zone_id,
+                active=True
+            )
+            db.session.add(new_space)
 
         db.session.commit()
         return jsonify(plano_to_full_dict(plano)), 200
