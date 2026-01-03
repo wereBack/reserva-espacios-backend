@@ -18,7 +18,7 @@ class Zone(Polygon):
     active = db.Column(db.Boolean, nullable=False, default=True)
     
     # Relaciones
-    spaces = db.relationship('Space', back_populates='zone', lazy=True, cascade='all, delete-orphan')
+    spaces = db.relationship('Space', back_populates='zone', lazy=True, foreign_keys='Space.zone_id')
     
     __mapper_args__ = {
         'polymorphic_identity': 'zone',

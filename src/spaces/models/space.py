@@ -18,7 +18,7 @@ class Space(Polygon):
     active = db.Column(db.Boolean, nullable=False, default=True)
     
     # Relaciones
-    zone = db.relationship('Zone', back_populates='spaces', lazy=True)
+    zone = db.relationship('Zone', back_populates='spaces', lazy=True, foreign_keys=[zone_id])
     reservations = db.relationship(
         'Reserva',
         back_populates='space',

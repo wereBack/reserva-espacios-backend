@@ -3,12 +3,18 @@ Aplicación Flask principal para el sistema de reserva de espacios.
 """
 
 from flask import Flask, jsonify
+from flask_cors import CORS
 from config import settings
 from database import db
 
 # Importo blueprints
 from health.routes import health_bp
 from spaces.routes import spaces_bp
+from eventos.routes import eventos_bp
+from planos.routes import planos_bp
+
+# Importo modelos sin blueprint para que SQLAlchemy los registre
+from reservas.models.reserva import Reserva  # noqa: F401
 
 def create_app(config_instance=None):
     """
@@ -45,6 +51,7 @@ def create_app(config_instance=None):
     
     # Inicializar extensiones
     db.init_app(app)
+    CORS(app)
 
     """
     Registro de blueprints
@@ -53,6 +60,8 @@ def create_app(config_instance=None):
     """
     app.register_blueprint(health_bp)
     app.register_blueprint(spaces_bp)
+    app.register_blueprint(eventos_bp)
+    app.register_blueprint(planos_bp)
     
     @app.errorhandler(404)
     def not_found(error):
