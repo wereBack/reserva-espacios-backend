@@ -39,6 +39,12 @@ class Settings(PydanticBaseSettings):
     # Configuración de reservas
     RESERVATION_TTL_SECONDS: int = Field(default=300, ge=10, description="TTL en segundos para reservas temporales (default 5 minutos)")
 
+    # Configuración de AWS S3
+    AWS_ACCESS_KEY_ID: str = Field(default="AKIAIOSFODNN7EXAMPLE", description="AWS Access Key ID")
+    AWS_SECRET_ACCESS_KEY: str = Field(default="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", description="AWS Secret Access Key")
+    AWS_S3_BUCKET_NAME: str = Field(default="reserva-espacios-um", description="Nombre del bucket S3")
+    AWS_S3_REGION: str = Field(default="us-east-1", description="Región de AWS S3")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

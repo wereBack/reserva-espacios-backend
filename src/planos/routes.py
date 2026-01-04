@@ -4,8 +4,27 @@ from planos.models.plano import Plano
 from spaces.models.space import Space
 from spaces.models.zone import Zone
 from spaces.models.polygon import Polygon
+from services.s3_service import upload_file
 
 planos_bp = Blueprint('planos_bp', __name__, url_prefix='/planos')
+
+
+@planos_bp.route('/upload-image', methods=['POST'])
+def upload_plano_image():
+    """Sube una imagen de plano a S3 y retorna la URL pública."""
+    if 'file' not in request.files:
+        return jsonify({'error': 'No se envió ningún archivo', 'status': 'error', 'code': 400}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'error': 'Nombre de archivo vacío', 'status': 'error', 'code': 400}), 400
+    
+    try:
+        url = upload_file(file, file.filename, file.content_type)
+        return jsonify({'url': url}), 200
+    except Exception as e:
+        return jsonify({'error': str(e), 'status': 'error', 'code': 500}), 500
 
 
 def plano_to_full_dict(plano):

@@ -18,5 +18,8 @@ flask-cors
 
 # Redis y WebSockets
 redis==5.2.1
-flask-socketio==5.5.1
-eventlet==0.39.1
+flask-socketio==5.6.0
+eventlet==0.40.4
+
+# AWS S3
+boto3==1.42.21
