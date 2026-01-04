@@ -12,9 +12,17 @@ from health.routes import health_bp
 from spaces.routes import spaces_bp
 from eventos.routes import eventos_bp
 from planos.routes import planos_bp
+from reservas.routes import reservas_bp
 
 # Importo modelos sin blueprint para que SQLAlchemy los registre
 from reservas.models.reserva import Reserva  # noqa: F401
+
+# Importo WebSocket
+from websocket import socketio, init_socketio
+
+# Variable global para el listener de Redis
+_expiration_listener = None
+
 
 def create_app(config_instance=None):
     """
@@ -52,6 +60,9 @@ def create_app(config_instance=None):
     # Inicializar extensiones
     db.init_app(app)
     CORS(app)
+    
+    # Inicializar WebSocket
+    init_socketio(app)
 
     """
     Registro de blueprints
@@ -62,6 +73,7 @@ def create_app(config_instance=None):
     app.register_blueprint(spaces_bp)
     app.register_blueprint(eventos_bp)
     app.register_blueprint(planos_bp)
+    app.register_blueprint(reservas_bp)
     
     @app.errorhandler(404)
     def not_found(error):
@@ -99,13 +111,56 @@ def create_app(config_instance=None):
     
     return app
 
+
+def start_expiration_listener(app):
+    """
+    Inicia el listener de expiración de Redis.
+    Debe llamarse después de crear la aplicación.
+    
+    Args:
+        app: Aplicación Flask
+    """
+    global _expiration_listener
+    
+    from redis_client import RedisExpirationListener
+    from reservas.service import ReservaService
+    
+    def on_reservation_expired(reservation_id: str):
+        """Callback cuando una reserva expira en Redis."""
+        with app.app_context():
+            ReservaService.process_expired_reservation(reservation_id)
+    
+    _expiration_listener = RedisExpirationListener(on_reservation_expired)
+    _expiration_listener.start()
+
+
+def stop_expiration_listener():
+    """Detiene el listener de expiración de Redis."""
+    global _expiration_listener
+    
+    if _expiration_listener:
+        _expiration_listener.stop()
+        _expiration_listener = None
+
+
 if __name__ == '__main__':
+    # Importar eventlet y hacer monkey patching antes de todo
+    import eventlet
+    eventlet.monkey_patch()
+    
     # Crear aplicación con configuración por defecto
     app = create_app()
     
-    # Ejecutar aplicación con configuración de Pydantic
-    app.run(
-        host=settings.FLASK_HOST,
-        port=settings.FLASK_PORT,
-        debug=settings.FLASK_DEBUG
-    )
+    # Iniciar listener de expiración de Redis
+    start_expiration_listener(app)
+    
+    try:
+        # Ejecutar aplicación con SocketIO
+        socketio.run(
+            app,
+            host=settings.FLASK_HOST,
+            port=settings.FLASK_PORT,
+            debug=settings.FLASK_DEBUG
+        )
+    finally:
+        stop_expiration_listener()

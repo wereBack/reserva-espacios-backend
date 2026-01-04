@@ -26,6 +26,7 @@ class Reserva(db.Model):
     asignee = db.Column(db.String(120), nullable=True)
     user_id = db.Column(db.String(120), nullable=True)
     espacio_id = db.Column(UUID_TYPE, db.ForeignKey('spaces.id'), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = db.Column(
         db.DateTime,
@@ -50,6 +51,8 @@ class Reserva(db.Model):
             'asignee': self.asignee,
             'user_id': self.user_id,
             'space_id': str(self.espacio_id),
+            'space_name': self.space.name if self.space else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -64,5 +67,6 @@ class Reserva(db.Model):
             asignee=data.get('asignee'),
             user_id=data.get('user_id'),
             espacio_id=data.get('space_id'),
+            expires_at=data.get('expires_at'),
         )
 
