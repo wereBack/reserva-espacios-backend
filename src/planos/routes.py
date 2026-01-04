@@ -66,6 +66,7 @@ def create_plano():
                 width=zone_data.get('width'),
                 height=zone_data.get('height'),
                 color=zone_data.get('color'),
+                price=zone_data.get('price'),
                 name=zone_data.get('name'),
                 plano_id=new_plano.id,
                 active=True
@@ -90,6 +91,7 @@ def create_plano():
                 width=space_data.get('width'),
                 height=space_data.get('height'),
                 color=space_data.get('color'),
+                price=space_data.get('price'),
                 name=space_data.get('name'),
                 plano_id=new_plano.id,
                 zone_id=backend_zone_id,
@@ -140,6 +142,7 @@ def update_plano(plano_id):
                 width=zone_data.get('width'),
                 height=zone_data.get('height'),
                 color=zone_data.get('color'),
+                price=zone_data.get('price'),
                 name=zone_data.get('name'),
                 plano_id=plano.id,
                 active=True
@@ -164,6 +167,7 @@ def update_plano(plano_id):
                 width=space_data.get('width'),
                 height=space_data.get('height'),
                 color=space_data.get('color'),
+                price=space_data.get('price'),
                 name=space_data.get('name'),
                 plano_id=plano.id,
                 zone_id=backend_zone_id,

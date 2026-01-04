@@ -191,3 +191,4 @@ class RedisService:
             logger.error(f"Error renovando TTL de reserva {reservation_id}: {e}")
             return False
 
+

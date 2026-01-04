@@ -9,7 +9,7 @@ from database import db
 
 # Importo blueprints
 from health.routes import health_bp
-from spaces.routes import spaces_bp
+from spaces.routes import spaces_bp, zones_bp
 from eventos.routes import eventos_bp
 from planos.routes import planos_bp
 from reservas.routes import reservas_bp
@@ -71,6 +71,7 @@ def create_app(config_instance=None):
     """
     app.register_blueprint(health_bp)
     app.register_blueprint(spaces_bp)
+    app.register_blueprint(zones_bp)
     app.register_blueprint(eventos_bp)
     app.register_blueprint(planos_bp)
     app.register_blueprint(reservas_bp)

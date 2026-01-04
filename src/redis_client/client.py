@@ -57,3 +57,4 @@ def get_redis_client() -> redis.Redis:
     """
     return redis_client.get_client()
 
+
