@@ -30,15 +30,6 @@ class Settings(PydanticBaseSettings):
     DATABASE_POOL_SIZE: int = Field(default=5, ge=1, le=20, description="Tamaño del pool de conexiones")
     DATABASE_MAX_OVERFLOW: int = Field(default=10, ge=0, le=30, description="Overflow máximo del pool")
     
-    # Configuración de Redis
-    REDIS_HOST: str = Field(default="redis", description="Host del servidor Redis (usar 'redis' en Docker)")
-    REDIS_PORT: int = Field(default=6379, ge=1, le=65535, description="Puerto del servidor Redis")
-    REDIS_PASSWORD: Optional[str] = Field(default=None, description="Contraseña de Redis")
-    REDIS_DB: int = Field(default=0, ge=0, le=15, description="Base de datos de Redis")
-    
-    # Configuración de reservas
-    RESERVATION_TTL_SECONDS: int = Field(default=300, ge=10, description="TTL en segundos para reservas temporales (default 5 minutos)")
-
     # Configuración de AWS S3
     AWS_ACCESS_KEY_ID: str = Field(default="AKIAIOSFODNN7EXAMPLE", description="AWS Access Key ID")
     AWS_SECRET_ACCESS_KEY: str = Field(default="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", description="AWS Secret Access Key")
@@ -82,7 +73,6 @@ class TestingSettings(Settings):
     DATABASE_URL: str = "sqlite:///:memory:"
     DATABASE_ECHO: bool = False
     FLASK_LOG_LEVEL: str = "DEBUG"
-    RESERVATION_TTL_SECONDS: int = 30  # TTL corto para tests
 
 
 # Instancia global de configuración

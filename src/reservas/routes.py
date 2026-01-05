@@ -94,44 +94,6 @@ def get_reservation(reservation_id):
         }), 500
 
 
-@reservas_bp.route('/<reservation_id>/status', methods=['GET'])
-def get_reservation_status(reservation_id):
-    """
-    Obtener estado detallado de una reserva (BD + Redis + TTL).
-    
-    Args:
-        reservation_id: UUID de la reserva
-        
-    Returns:
-        200: Estado de la reserva
-        {
-            "exists_in_database": true,
-            "is_active_in_redis": true,
-            "ttl_seconds": 250,
-            "reservation": {...}
-        }
-    """
-    try:
-        status = ReservaService.get_reservation_status(reservation_id)
-        
-        if status is None:
-            return jsonify({
-                'error': 'Error obteniendo estado de la reserva',
-                'status': 'error'
-            }), 500
-        
-        return jsonify({
-            'status': 'success',
-            **status
-        }), 200
-        
-    except Exception as e:
-        return jsonify({
-            'error': str(e),
-            'status': 'error'
-        }), 500
-
-
 @reservas_bp.route('/<reservation_id>', methods=['DELETE'])
 def cancel_reservation(reservation_id):
     """
@@ -158,52 +120,6 @@ def cancel_reservation(reservation_id):
         return jsonify({
             'status': 'success',
             'message': 'Reserva cancelada exitosamente',
-            'reservation': reserva.to_dict()
-        }), 200
-        
-    except Exception as e:
-        return jsonify({
-            'error': str(e),
-            'status': 'error'
-        }), 500
-
-
-@reservas_bp.route('/<reservation_id>/refresh', methods=['POST'])
-def refresh_reservation_ttl(reservation_id):
-    """
-    Renovar el TTL de una reserva activa.
-    
-    Request Body (opcional):
-        {
-            "ttl_seconds": 300
-        }
-        
-    Args:
-        reservation_id: UUID de la reserva
-        
-    Returns:
-        200: TTL renovado
-        400: No se puede renovar
-        404: Reserva no encontrada
-    """
-    try:
-        data = request.get_json() or {}
-        
-        reserva, error = ReservaService.refresh_reservation_ttl(
-            reservation_id,
-            ttl_seconds=data.get('ttl_seconds'),
-        )
-        
-        if error:
-            status_code = 404 if 'no encontrada' in error.lower() else 400
-            return jsonify({
-                'error': error,
-                'status': 'error'
-            }), status_code
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'TTL renovado exitosamente',
             'reservation': reserva.to_dict()
         }), 200
         

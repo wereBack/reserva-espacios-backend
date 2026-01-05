@@ -2,6 +2,10 @@
 Aplicación Flask principal para el sistema de reserva de espacios.
 """
 
+# Monkey patching de gevent ANTES de cualquier otro import
+from gevent import monkey
+monkey.patch_all()
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 from config import settings
@@ -19,9 +23,6 @@ from reservas.models.reserva import Reserva  # noqa: F401
 
 # Importo WebSocket
 from websocket import socketio, init_socketio
-
-# Variable global para el listener de Redis
-_expiration_listener = None
 
 
 def create_app(config_instance=None):
@@ -113,55 +114,14 @@ def create_app(config_instance=None):
     return app
 
 
-def start_expiration_listener(app):
-    """
-    Inicia el listener de expiración de Redis.
-    Debe llamarse después de crear la aplicación.
-    
-    Args:
-        app: Aplicación Flask
-    """
-    global _expiration_listener
-    
-    from redis_client import RedisExpirationListener
-    from reservas.service import ReservaService
-    
-    def on_reservation_expired(reservation_id: str):
-        """Callback cuando una reserva expira en Redis."""
-        with app.app_context():
-            ReservaService.process_expired_reservation(reservation_id)
-    
-    _expiration_listener = RedisExpirationListener(on_reservation_expired)
-    _expiration_listener.start()
-
-
-def stop_expiration_listener():
-    """Detiene el listener de expiración de Redis."""
-    global _expiration_listener
-    
-    if _expiration_listener:
-        _expiration_listener.stop()
-        _expiration_listener = None
-
-
 if __name__ == '__main__':
-    # Importar eventlet y hacer monkey patching antes de todo
-    import eventlet
-    eventlet.monkey_patch()
-    
     # Crear aplicación con configuración por defecto
     app = create_app()
     
-    # Iniciar listener de expiración de Redis
-    start_expiration_listener(app)
-    
-    try:
-        # Ejecutar aplicación con SocketIO
-        socketio.run(
-            app,
-            host=settings.FLASK_HOST,
-            port=settings.FLASK_PORT,
-            debug=settings.FLASK_DEBUG
-        )
-    finally:
-        stop_expiration_listener()
+    # Ejecutar aplicación con SocketIO
+    socketio.run(
+        app,
+        host=settings.FLASK_HOST,
+        port=settings.FLASK_PORT,
+        debug=settings.FLASK_DEBUG
+    )

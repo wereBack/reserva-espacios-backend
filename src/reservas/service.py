@@ -1,33 +1,26 @@
 """
-Servicio de reservas con integración Redis y WebSocket.
+Servicio de reservas con integración WebSocket.
 
 Flujo de reservas:
-1. Usuario solicita reserva -> estado PENDING (TTL 30s en Redis)
-2. Admin confirma -> estado RESERVED (se elimina TTL, reserva permanente)
-3. Si TTL expira sin confirmar -> estado EXPIRED (espacio disponible nuevamente)
+1. Usuario solicita reserva -> estado PENDING
+2. Admin confirma -> estado RESERVED
+3. Admin rechaza -> estado CANCELLED
 """
 
 import logging
-from datetime import datetime, timezone, timedelta
 from typing import Optional, Tuple
-from uuid import UUID
 
 from database import db
 from reservas.models.reserva import Reserva
 from spaces.models.space import Space
-from redis_client.service import RedisService
 from websocket.socket_manager import (
     emit_reservation_created,
     emit_reservation_updated,
     emit_reservation_expired,
     emit_reservation_cancelled,
 )
-from config import settings
 
 logger = logging.getLogger(__name__)
-
-# TTL para reservas pendientes (30 segundos)
-PENDING_TTL_SECONDS = 30
 
 
 class ReservationStatus:
@@ -40,8 +33,8 @@ class ReservationStatus:
 
 class ReservaService:
     """
-    Servicio para gestionar reservas con expiración automática.
-    Integra PostgreSQL (persistencia), Redis (TTL) y WebSocket (notificaciones).
+    Servicio para gestionar reservas.
+    Integra PostgreSQL (persistencia) y WebSocket (notificaciones).
     """
     
     @classmethod
@@ -212,9 +205,6 @@ class ReservaService:
             if reserva.estado not in [ReservationStatus.PENDING, ReservationStatus.RESERVED]:
                 return None, f"La reserva no está activa (estado: {reserva.estado})"
             
-            # Eliminar de Redis si existe
-            RedisService.delete_reservation(reservation_id)
-            
             # Actualizar estado en BD
             reserva.estado = ReservationStatus.CANCELLED
             db.session.commit()
@@ -243,66 +233,19 @@ class ReservaService:
         Returns:
             dict con:
             - exists_in_database: bool
-            - is_active_in_redis: bool
-            - ttl_seconds: int (-2 si no existe)
             - reservation: dict o None
         """
         try:
             reserva = Reserva.query.get(reservation_id)
             
-            exists_in_db = reserva is not None
-            is_active_in_redis = RedisService.exists(reservation_id)
-            ttl_seconds = RedisService.get_ttl(reservation_id)
-            
             return {
-                'exists_in_database': exists_in_db,
-                'is_active_in_redis': is_active_in_redis,
-                'ttl_seconds': ttl_seconds,
+                'exists_in_database': reserva is not None,
                 'reservation': reserva.to_dict() if reserva else None,
             }
             
         except Exception as e:
             logger.error(f"Error obteniendo estado de reserva: {e}")
             return None
-    
-    @classmethod
-    def process_expired_reservation(cls, reservation_id: str):
-        """
-        Procesa una reserva que ha expirado en Redis.
-        Solo las reservas PENDING expiran (las RESERVED no tienen TTL).
-        
-        Args:
-            reservation_id: ID de la reserva expirada
-        """
-        try:
-            logger.info(f"Procesando reserva expirada: {reservation_id}")
-            
-            reserva = Reserva.query.get(reservation_id)
-            if not reserva:
-                logger.warning(f"Reserva expirada {reservation_id} no encontrada en BD")
-                return
-            
-            # Solo procesar si está en PENDING (las RESERVED no expiran)
-            if reserva.estado != ReservationStatus.PENDING:
-                logger.info(f"Reserva {reservation_id} no está en estado PENDING (estado: {reserva.estado})")
-                return
-            
-            # Actualizar estado en BD a EXPIRED
-            reserva.estado = ReservationStatus.EXPIRED
-            db.session.commit()
-            
-            # Obtener plano_id para el WebSocket
-            space = Space.query.get(reserva.espacio_id)
-            plano_id = str(space.plano_id) if space and space.plano_id else None
-            
-            # Emitir evento WebSocket (el espacio vuelve a estar disponible)
-            emit_reservation_expired(reserva.to_dict(), plano_id)
-            
-            logger.info(f"Reserva PENDING {reservation_id} expiró - espacio disponible nuevamente")
-            
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Error procesando reserva expirada {reservation_id}: {e}")
     
     @classmethod
     def get_reservation_by_id(cls, reservation_id: str) -> Optional[Reserva]:
@@ -358,51 +301,3 @@ class ReservaService:
         """
         return Reserva.query.filter_by(estado=ReservationStatus.PENDING).all()
     
-    @classmethod
-    def refresh_reservation_ttl(
-        cls,
-        reservation_id: str,
-        ttl_seconds: Optional[int] = None
-    ) -> Tuple[Optional[Reserva], Optional[str]]:
-        """
-        Renueva el TTL de una reserva pendiente.
-        
-        Args:
-            reservation_id: ID de la reserva
-            ttl_seconds: Nuevo TTL (opcional)
-            
-        Returns:
-            Tuple[Reserva, None] si éxito, Tuple[None, error_message] si falla
-        """
-        try:
-            reserva = Reserva.query.get(reservation_id)
-            if not reserva:
-                return None, "Reserva no encontrada"
-            
-            if reserva.estado != ReservationStatus.PENDING:
-                return None, "Solo se puede renovar TTL de reservas pendientes"
-            
-            # Renovar TTL en Redis
-            ttl = ttl_seconds or PENDING_TTL_SECONDS
-            if not RedisService.refresh_ttl(reservation_id, ttl):
-                return None, "No se pudo renovar el TTL"
-            
-            # Actualizar expires_at en BD
-            reserva.expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
-            db.session.commit()
-            
-            # Obtener plano_id para el WebSocket
-            space = Space.query.get(reserva.espacio_id)
-            plano_id = str(space.plano_id) if space and space.plano_id else None
-            
-            # Emitir evento de actualización
-            emit_reservation_updated(reserva.to_dict(), plano_id)
-            
-            logger.info(f"TTL de reserva {reservation_id} renovado a {ttl}s")
-            
-            return reserva, None
-            
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Error renovando TTL: {e}")
-            return None, str(e)

@@ -25,7 +25,7 @@ def init_socketio(app: Flask) -> SocketIO:
     socketio.init_app(
         app,
         cors_allowed_origins="*",
-        async_mode='eventlet',
+        async_mode='gevent',
         logger=True,
         engineio_logger=True if app.debug else False,
     )
