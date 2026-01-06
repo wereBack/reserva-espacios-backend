@@ -166,3 +166,23 @@ def emit_reservation_cancelled(reservation_data: dict, plano_id: str = None):
     
     logger.info(f"Evento reservation_cancelled emitido (broadcast) para reserva {reservation_data.get('id')}")
 
+
+def emit_space_updated(space_data: dict, plano_id: str = None):
+    """
+    Emite un evento cuando se actualiza un espacio (stand).
+    Siempre emite a todos los clientes conectados (broadcast).
+    
+    Args:
+        space_data: Datos del espacio actualizado
+        plano_id: ID del plano (incluido en el payload para filtrar en frontend)
+    """
+    event_data = {
+        'event': 'space_updated',
+        'space': space_data,
+        'plano_id': plano_id
+    }
+    
+    # Broadcast a todos los clientes conectados al namespace
+    socketio.emit('space_updated', event_data, namespace='/reservas')
+    
+    logger.info(f"Evento space_updated emitido (broadcast) para espacio {space_data.get('id')}")
