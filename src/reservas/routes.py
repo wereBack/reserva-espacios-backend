@@ -4,19 +4,20 @@ Rutas REST para gestión de reservas.
 
 from flask import Blueprint, jsonify, request
 from reservas.service import ReservaService
+from auth import require_auth, require_role, get_current_user
 
 reservas_bp = Blueprint('reservas', __name__, url_prefix='/api/reservas')
 
 
 @reservas_bp.route('', methods=['POST'])
+@require_auth
 def create_reservation():
     """
-    Crear una nueva reserva temporal.
+    Crear una nueva reserva temporal. Requiere autenticacion.
     
     Request Body:
         {
             "space_id": "uuid-del-espacio",
-            "user_id": "id-usuario-keycloak" (opcional),
             "asignee": "nombre-asignado" (opcional),
             "ttl_seconds": 300 (opcional, default de config)
         }
@@ -35,10 +36,15 @@ def create_reservation():
                 'status': 'error'
             }), 400
         
+        # Obtener usuario autenticado
+        current_user = get_current_user()
+        user_id = current_user.get('id') if current_user else None
+        asignee = data.get('asignee') or (current_user.get('name') if current_user else None)
+        
         reserva, error = ReservaService.create_reservation(
             space_id=data['space_id'],
-            user_id=data.get('user_id'),
-            asignee=data.get('asignee'),
+            user_id=user_id,
+            asignee=asignee,
             ttl_seconds=data.get('ttl_seconds'),
         )
         
@@ -95,9 +101,10 @@ def get_reservation(reservation_id):
 
 
 @reservas_bp.route('/<reservation_id>', methods=['DELETE'])
+@require_auth
 def cancel_reservation(reservation_id):
     """
-    Cancelar una reserva activa.
+    Cancelar una reserva activa. Requiere autenticacion.
     
     Args:
         reservation_id: UUID de la reserva
@@ -185,10 +192,11 @@ def get_active_reservation_by_space(space_id):
 # ==================== ENDPOINTS ADMIN ====================
 
 @reservas_bp.route('/pending', methods=['GET'])
+@require_auth
+@require_role('Admin')
 def get_pending_reservations():
     """
-    Obtener todas las reservas pendientes de confirmación.
-    Para uso del panel de admin.
+    Obtener todas las reservas pendientes de confirmación. Solo Admin.
     
     Returns:
         200: Lista de reservas pendientes
@@ -209,10 +217,11 @@ def get_pending_reservations():
 
 
 @reservas_bp.route('/<reservation_id>/confirm', methods=['POST'])
+@require_auth
+@require_role('Admin')
 def confirm_reservation(reservation_id):
     """
-    Confirmar una reserva pendiente (PENDING -> RESERVED).
-    Solo para admin.
+    Confirmar una reserva pendiente (PENDING -> RESERVED). Solo Admin.
     
     Args:
         reservation_id: UUID de la reserva
@@ -246,10 +255,11 @@ def confirm_reservation(reservation_id):
 
 
 @reservas_bp.route('/<reservation_id>/reject', methods=['POST'])
+@require_auth
+@require_role('Admin')
 def reject_reservation(reservation_id):
     """
-    Rechazar una reserva pendiente (PENDING -> CANCELLED).
-    Solo para admin.
+    Rechazar una reserva pendiente (PENDING -> CANCELLED). Solo Admin.
     
     Args:
         reservation_id: UUID de la reserva

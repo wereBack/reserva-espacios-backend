@@ -1,17 +1,20 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
 from database import db
 from planos.models.plano import Plano
 from spaces.models.space import Space
 from spaces.models.zone import Zone
 from spaces.models.polygon import Polygon
-from services.s3_service import upload_file
+from services.s3_service import upload_file, get_file
+from auth import require_auth, require_role
 
 planos_bp = Blueprint('planos_bp', __name__, url_prefix='/planos')
 
 
 @planos_bp.route('/upload-image', methods=['POST'])
+@require_auth
+@require_role('Admin')
 def upload_plano_image():
-    """Sube una imagen de plano a S3 y retorna la URL pública."""
+    """Sube una imagen de plano a S3 y retorna la URL pública. Solo Admin."""
     if 'file' not in request.files:
         return jsonify({'error': 'No se envió ningún archivo', 'status': 'error', 'code': 400}), 400
     
@@ -25,6 +28,27 @@ def upload_plano_image():
         return jsonify({'url': url}), 200
     except Exception as e:
         return jsonify({'error': str(e), 'status': 'error', 'code': 500}), 500
+
+
+@planos_bp.route('/image/<path:s3_key>', methods=['GET'])
+def proxy_image(s3_key):
+    """
+    Proxy para servir imágenes de S3 evitando problemas de CORS.
+    Endpoint publico para que el canvas pueda cargar las imagenes.
+    """
+    file_bytes, content_type, error = get_file(s3_key)
+    
+    if error:
+        return jsonify({'error': error, 'status': 'error'}), 404
+    
+    return Response(
+        file_bytes,
+        mimetype=content_type,
+        headers={
+            'Cache-Control': 'public, max-age=31536000',
+            'Access-Control-Allow-Origin': '*'
+        }
+    )
 
 
 def plano_to_full_dict(plano):
@@ -58,7 +82,10 @@ def get_plano(plano_id):
     return jsonify(plano_to_full_dict(plano)), 200
 
 @planos_bp.route('/', methods=['POST'])
+@require_auth
+@require_role('Admin')
 def create_plano():
+    """Crear un nuevo plano. Solo Admin."""
     data = request.json
     if not data:
         return jsonify({'error': 'Datos inválidos', 'status': 'error', 'code': 400}), 400
@@ -125,7 +152,10 @@ def create_plano():
         return jsonify({'error': str(e), 'status': 'error', 'code': 500}), 500
 
 @planos_bp.route('/<string:plano_id>', methods=['PUT'])
+@require_auth
+@require_role('Admin')
 def update_plano(plano_id):
+    """Actualizar un plano. Solo Admin."""
     plano = Plano.query.get(plano_id)
     if not plano:
         return jsonify({'error': 'Plano no encontrado', 'status': 'error', 'code': 404}), 404
@@ -201,7 +231,10 @@ def update_plano(plano_id):
         return jsonify({'error': str(e), 'status': 'error', 'code': 500}), 500
 
 @planos_bp.route('/<string:plano_id>', methods=['DELETE'])
+@require_auth
+@require_role('Admin')
 def delete_plano(plano_id):
+    """Eliminar un plano. Solo Admin."""
     plano = Plano.query.get(plano_id)
     if not plano:
         return jsonify({'error': 'Plano no encontrado', 'status': 'error', 'code': 404}), 404

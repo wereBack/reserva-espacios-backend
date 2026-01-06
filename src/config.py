@@ -35,6 +35,17 @@ class Settings(PydanticBaseSettings):
     AWS_SECRET_ACCESS_KEY: str = Field(default="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", description="AWS Secret Access Key")
     AWS_S3_BUCKET_NAME: str = Field(default="reserva-espacios-um", description="Nombre del bucket S3")
     AWS_S3_REGION: str = Field(default="us-east-1", description="Región de AWS S3")
+    
+    # Configuración de Keycloak para autenticación
+    # KEYCLOAK_URL: URL interna para conectarse a Keycloak (obtener claves publicas)
+    #   - En Docker: http://keycloak:8080
+    #   - Local: http://localhost:8080
+    # KEYCLOAK_ISSUER_URL: URL del issuer en los tokens (como el navegador ve a Keycloak)
+    #   - Generalmente: http://localhost:8080
+    KEYCLOAK_URL: str = Field(default="http://keycloak:8080", description="URL interna para conectarse a Keycloak")
+    KEYCLOAK_ISSUER_URL: str = Field(default="http://localhost:8080", description="URL del issuer en los tokens")
+    KEYCLOAK_REALM: str = Field(default="reserva-espacios", description="Nombre del realm de Keycloak")
+    KEYCLOAK_CLIENT_ID: str = Field(default="front-admin", description="Client ID de la aplicación en Keycloak")
 
     class Config:
         env_file = ".env"

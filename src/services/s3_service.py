@@ -1,11 +1,49 @@
 """
-Servicio para subir archivos a AWS S3.
+Servicio para subir y obtener archivos de AWS S3.
 """
 import uuid
 from io import BytesIO
+from typing import Optional, Tuple
 import boto3
 from botocore.exceptions import ClientError
 from config import settings
+
+
+def get_s3_client():
+    """Obtiene un cliente S3 configurado."""
+    return boto3.client(
+        's3',
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name=settings.AWS_S3_REGION
+    )
+
+
+def get_file(s3_key: str) -> Tuple[Optional[bytes], Optional[str], Optional[str]]:
+    """
+    Descarga un archivo de S3.
+    
+    Args:
+        s3_key: Clave del archivo en S3 (ej: "planos/uuid.svg")
+    
+    Returns:
+        Tuple de (bytes del archivo, content_type, error_message)
+    """
+    try:
+        s3_client = get_s3_client()
+        response = s3_client.get_object(
+            Bucket=settings.AWS_S3_BUCKET_NAME,
+            Key=s3_key
+        )
+        file_bytes = response['Body'].read()
+        content_type = response.get('ContentType', 'application/octet-stream')
+        return file_bytes, content_type, None
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'NoSuchKey':
+            return None, None, "Archivo no encontrado"
+        return None, None, f"Error al obtener archivo: {e}"
+    except Exception as e:
+        return None, None, f"Error inesperado: {e}"
 
 
 def upload_file(file_data, original_filename: str, content_type: str = None) -> str:
@@ -31,12 +69,7 @@ def upload_file(file_data, original_filename: str, content_type: str = None) -> 
     file_bytes = file_data.read()
     
     try:
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION
-        )
+        s3_client = get_s3_client()
         
         extra_args = {}
         if content_type:
