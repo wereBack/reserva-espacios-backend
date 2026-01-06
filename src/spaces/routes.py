@@ -9,6 +9,7 @@ from spaces.models.zone import Zone
 from reservas.models.reserva import Reserva
 from reservas.service import ReservaService
 from websocket.socket_manager import emit_reservation_cancelled, emit_space_updated
+from auth import require_auth, require_role, get_current_user
 
 # Blueprint para endpoints de espacios
 spaces_bp = Blueprint("spaces", __name__, url_prefix="/spaces")
@@ -22,8 +23,10 @@ def get_spaces():
 
 
 @spaces_bp.route("/", methods=["POST"])
+@require_auth
+@require_role('Admin')
 def create_space():
-    """Crear un nuevo espacio (stand) individual."""
+    """Crear un nuevo espacio (stand) individual. Solo Admin."""
     data = request.json or {}
     
     # Validar que tenga plano_id
@@ -67,8 +70,10 @@ def get_space(space_id):
 
 
 @spaces_bp.route("/<string:space_id>", methods=["PATCH"])
+@require_auth
+@require_role('Admin')
 def update_space(space_id):
-    """Actualizar un espacio (nombre, precio, estado, etc)."""
+    """Actualizar un espacio (nombre, precio, estado, etc). Solo Admin."""
     space = Space.query.get(space_id)
     if not space:
         return jsonify({"error": "Espacio no encontrado", "status": "error"}), 404
@@ -143,8 +148,9 @@ def update_space(space_id):
 
 
 @spaces_bp.route("/<string:space_id>/reservar", methods=["POST"])
+@require_auth
 def reservar_space(space_id):
-    """Cliente reserva un stand. Emite evento WebSocket para actualización en tiempo real."""
+    """Cliente reserva un stand. Requiere autenticacion. Emite evento WebSocket."""
     space = Space.query.get(space_id)
     if not space:
         return jsonify({"error": "Espacio no encontrado", "status": "error"}), 404
@@ -154,11 +160,16 @@ def reservar_space(space_id):
     
     data = request.json or {}
     
+    # Obtener datos del usuario autenticado
+    current_user = get_current_user()
+    user_id = current_user.get('id') if current_user else data.get("user_id")
+    asignee = data.get("asignee") or current_user.get('name') if current_user else None
+    
     # Usar el servicio que emite WebSocket
     reserva, error = ReservaService.create_reservation(
         space_id=space_id,
-        user_id=data.get("user_id"),
-        asignee=data.get("asignee"),
+        user_id=user_id,
+        asignee=asignee,
     )
     
     if error:
@@ -168,8 +179,9 @@ def reservar_space(space_id):
 
 
 @spaces_bp.route("/<string:space_id>/reserva", methods=["DELETE"])
+@require_auth
 def cancelar_reserva(space_id):
-    """Cancelar reserva de un stand. Emite evento WebSocket."""
+    """Cancelar reserva de un stand. Requiere autenticacion. Emite evento WebSocket."""
     reserva = Reserva.query.filter_by(espacio_id=space_id).first()
     if not reserva:
         return jsonify({"error": "No hay reserva para este stand", "status": "error"}), 404
@@ -193,8 +205,10 @@ def cancelar_reserva(space_id):
 
 
 @spaces_bp.route("/<string:space_id>/bloquear", methods=["PATCH"])
+@require_auth
+@require_role('Admin')
 def bloquear_space(space_id):
-    """Admin bloquea un stand."""
+    """Admin bloquea un stand. Solo Admin."""
     space = Space.query.get(space_id)
     if not space:
         return jsonify({"error": "Espacio no encontrado", "status": "error"}), 404
@@ -209,8 +223,10 @@ def bloquear_space(space_id):
 
 
 @spaces_bp.route("/<string:space_id>/desbloquear", methods=["PATCH"])
+@require_auth
+@require_role('Admin')
 def desbloquear_space(space_id):
-    """Admin desbloquea un stand."""
+    """Admin desbloquea un stand. Solo Admin."""
     space = Space.query.get(space_id)
     if not space:
         return jsonify({"error": "Espacio no encontrado", "status": "error"}), 404
@@ -225,8 +241,10 @@ def desbloquear_space(space_id):
 
 
 @spaces_bp.route("/<string:space_id>/reserva/confirmar", methods=["PATCH"])
+@require_auth
+@require_role('Admin')
 def confirmar_reserva(space_id):
-    """Confirmar una reserva pendiente."""
+    """Confirmar una reserva pendiente. Solo Admin."""
     reserva = Reserva.query.filter_by(espacio_id=space_id).first()
     if not reserva:
         return jsonify({"error": "No hay reserva para este stand", "status": "error"}), 404
@@ -246,8 +264,10 @@ zones_bp = Blueprint("zones", __name__, url_prefix="/zones")
 
 
 @zones_bp.route("/", methods=["POST"])
+@require_auth
+@require_role('Admin')
 def create_zone():
-    """Crear una nueva zona individual."""
+    """Crear una nueva zona individual. Solo Admin."""
     data = request.json or {}
     
     # Validar que tenga plano_id
@@ -287,8 +307,10 @@ def get_zone(zone_id):
 
 
 @zones_bp.route("/<string:zone_id>", methods=["PATCH"])
+@require_auth
+@require_role('Admin')
 def update_zone(zone_id):
-    """Actualizar una zona (nombre, precio, color, etc)."""
+    """Actualizar una zona (nombre, precio, color, etc). Solo Admin."""
     zone = Zone.query.get(zone_id)
     if not zone:
         return jsonify({"error": "Zona no encontrada", "status": "error"}), 404
@@ -313,8 +335,10 @@ def update_zone(zone_id):
 
 
 @zones_bp.route("/<string:zone_id>", methods=["DELETE"])
+@require_auth
+@require_role('Admin')
 def delete_zone(zone_id):
-    """Eliminar una zona por ID."""
+    """Eliminar una zona por ID. Solo Admin."""
     zone = Zone.query.get(zone_id)
     if not zone:
         return jsonify({"error": "Zona no encontrada", "status": "error"}), 404
@@ -331,8 +355,10 @@ def delete_zone(zone_id):
 # ==================== DELETE SPACE ====================
 
 @spaces_bp.route("/<string:space_id>", methods=["DELETE"])
+@require_auth
+@require_role('Admin')
 def delete_space(space_id):
-    """Eliminar un espacio (stand) por ID."""
+    """Eliminar un espacio (stand) por ID. Solo Admin."""
     space = Space.query.get(space_id)
     if not space:
         return jsonify({"error": "Espacio no encontrado", "status": "error"}), 404

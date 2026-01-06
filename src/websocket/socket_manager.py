@@ -2,11 +2,9 @@
 Gestión de WebSocket con Flask-SocketIO.
 """
 
-import logging
-from flask import Flask
-from flask_socketio import SocketIO, emit, join_room, leave_room
-
-logger = logging.getLogger(__name__)
+from flask import Flask, request
+from flask_socketio import SocketIO, emit, join_room, leave_room, disconnect
+from auth.keycloak import token_validator
 
 # Instancia global de SocketIO
 socketio = SocketIO()
@@ -26,15 +24,45 @@ def init_socketio(app: Flask) -> SocketIO:
         app,
         cors_allowed_origins="*",
         async_mode='gevent',
-        logger=True,
-        engineio_logger=True if app.debug else False,
+        logger=False,
+        engineio_logger=False,
     )
     
     # Registrar handlers de eventos
     _register_handlers()
     
-    logger.info("Flask-SocketIO inicializado")
     return socketio
+
+
+def _validate_token_from_request() -> tuple[dict | None, str | None]:
+    """
+    Extrae y valida el token JWT de la conexión WebSocket.
+    El token puede venir como query param 'token' o en el header Authorization.
+    
+    Returns:
+        Tuple de (claims del usuario, None) si el token es valido
+        Tuple de (None, None) si no hay token (cliente publico)
+        Tuple de (None, error) si el token es invalido
+    """
+    # Intentar obtener token de query params
+    token = request.args.get('token')
+    
+    # Si no está en query params, intentar del header Authorization
+    if not token:
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            token = auth_header[7:]
+    
+    # Si no hay token, permitir como cliente publico
+    if not token:
+        return None, None
+    
+    # Si hay token, validarlo
+    claims, error = token_validator.validate_token(token)
+    if error:
+        return None, error
+    
+    return claims, None
 
 
 def _register_handlers():
@@ -42,14 +70,40 @@ def _register_handlers():
     
     @socketio.on('connect', namespace='/reservas')
     def handle_connect():
-        """Maneja la conexión de un cliente."""
-        logger.info("Cliente conectado al namespace /reservas")
-        emit('connected', {'status': 'ok', 'message': 'Conectado al sistema de reservas'})
+        """
+        Maneja la conexión de un cliente.
+        - Si se envía token: lo valida y rechaza si es inválido
+        - Si no hay token: permite conexión como cliente público
+        """
+        claims, error = _validate_token_from_request()
+        
+        # Si hay error de validación (token inválido), rechazar
+        if error:
+            emit('auth_error', {'error': error})
+            disconnect()
+            return False
+        
+        # Conexión exitosa (autenticada o pública)
+        if claims:
+            # Usuario autenticado
+            emit('connected', {
+                'status': 'ok',
+                'message': 'Conectado al sistema de reservas',
+                'authenticated': True,
+                'user': claims.get('preferred_username')
+            })
+        else:
+            # Cliente público (sin autenticación)
+            emit('connected', {
+                'status': 'ok',
+                'message': 'Conectado al sistema de reservas (modo público)',
+                'authenticated': False
+            })
     
     @socketio.on('disconnect', namespace='/reservas')
     def handle_disconnect():
         """Maneja la desconexión de un cliente."""
-        logger.info("Cliente desconectado del namespace /reservas")
+        pass
     
     @socketio.on('join_plano', namespace='/reservas')
     def handle_join_plano(data):
@@ -63,7 +117,6 @@ def _register_handlers():
         plano_id = data.get('plano_id')
         if plano_id:
             join_room(f'plano_{plano_id}')
-            logger.info(f"Cliente unido a sala plano_{plano_id}")
             emit('joined_plano', {'plano_id': plano_id, 'status': 'ok'})
     
     @socketio.on('leave_plano', namespace='/reservas')
@@ -77,7 +130,6 @@ def _register_handlers():
         plano_id = data.get('plano_id')
         if plano_id:
             leave_room(f'plano_{plano_id}')
-            logger.info(f"Cliente salió de sala plano_{plano_id}")
             emit('left_plano', {'plano_id': plano_id, 'status': 'ok'})
 
 
@@ -100,8 +152,6 @@ def emit_reservation_created(reservation_data: dict, plano_id: str = None):
     
     # Broadcast a todos los clientes conectados al namespace
     socketio.emit('reservation_created', event_data, namespace='/reservas')
-    
-    logger.info(f"Evento reservation_created emitido (broadcast) para reserva {reservation_data.get('id')}")
 
 
 def emit_reservation_updated(reservation_data: dict, plano_id: str = None):
@@ -121,8 +171,6 @@ def emit_reservation_updated(reservation_data: dict, plano_id: str = None):
     
     # Broadcast a todos los clientes conectados al namespace
     socketio.emit('reservation_updated', event_data, namespace='/reservas')
-    
-    logger.info(f"Evento reservation_updated emitido (broadcast) para reserva {reservation_data.get('id')}")
 
 
 def emit_reservation_expired(reservation_data: dict, plano_id: str = None):
@@ -142,8 +190,6 @@ def emit_reservation_expired(reservation_data: dict, plano_id: str = None):
     
     # Broadcast a todos los clientes conectados al namespace
     socketio.emit('reservation_expired', event_data, namespace='/reservas')
-    
-    logger.info(f"Evento reservation_expired emitido (broadcast) para reserva {reservation_data.get('id')}")
 
 
 def emit_reservation_cancelled(reservation_data: dict, plano_id: str = None):
@@ -163,8 +209,6 @@ def emit_reservation_cancelled(reservation_data: dict, plano_id: str = None):
     
     # Broadcast a todos los clientes conectados al namespace
     socketio.emit('reservation_cancelled', event_data, namespace='/reservas')
-    
-    logger.info(f"Evento reservation_cancelled emitido (broadcast) para reserva {reservation_data.get('id')}")
 
 
 def emit_space_updated(space_data: dict, plano_id: str = None):
@@ -184,5 +228,3 @@ def emit_space_updated(space_data: dict, plano_id: str = None):
     
     # Broadcast a todos los clientes conectados al namespace
     socketio.emit('space_updated', event_data, namespace='/reservas')
-    
-    logger.info(f"Evento space_updated emitido (broadcast) para espacio {space_data.get('id')}")

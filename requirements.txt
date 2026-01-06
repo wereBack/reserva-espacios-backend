@@ -23,3 +23,8 @@ gevent-websocket==0.10.1
 
 # AWS S3
 boto3==1.42.21
+
+# Autenticacion JWT Keycloak
+PyJWT==2.10.1
+cryptography==46.0.3
+requests==2.32.5
