@@ -3,6 +3,7 @@ Rutas REST para gestión de reservas.
 """
 
 from flask import Blueprint, jsonify, request
+from database import db
 from reservas.service import ReservaService
 from auth import require_auth, require_role, get_current_user
 
@@ -189,6 +190,91 @@ def get_active_reservation_by_space(space_id):
         }), 500
 
 
+# ==================== ENDPOINTS USUARIO ====================
+
+@reservas_bp.route('/mis-reservas', methods=['GET'])
+@require_auth
+def get_my_reservations():
+    """
+    Obtener todas las reservas del usuario autenticado.
+    
+    Returns:
+        200: Lista de reservas del usuario
+    """
+    try:
+        current_user = get_current_user()
+        user_id = current_user.get('id') if current_user else None
+        
+        if not user_id:
+            return jsonify({
+                'error': 'Usuario no identificado',
+                'status': 'error'
+            }), 401
+        
+        reservas = ReservaService.get_reservations_by_user(user_id)
+        
+        return jsonify({
+            'status': 'success',
+            'reservations': [r.to_dict() for r in reservas]
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'status': 'error'
+        }), 500
+
+
+@reservas_bp.route('/<reservation_id>/solicitar-cancelacion', methods=['POST'])
+@require_auth
+def request_cancellation(reservation_id):
+    """
+    Solicitar cancelación de una reserva.
+    - Si está PENDING: se cancela directamente
+    - Si está RESERVED: queda en estado CANCELLATION_REQUESTED para revisión del admin
+    
+    Args:
+        reservation_id: UUID de la reserva
+        
+    Returns:
+        200: Solicitud procesada
+        400: No se puede procesar
+        404: Reserva no encontrada
+    """
+    try:
+        current_user = get_current_user()
+        user_id = current_user.get('id') if current_user else None
+        
+        if not user_id:
+            return jsonify({
+                'error': 'Usuario no identificado',
+                'status': 'error'
+            }), 401
+        
+        reserva, error = ReservaService.request_cancellation(reservation_id, user_id)
+        
+        if error:
+            status_code = 404 if 'no encontrada' in error.lower() else 400
+            return jsonify({
+                'error': error,
+                'status': 'error'
+            }), status_code
+        
+        message = 'Reserva cancelada' if reserva.estado == 'CANCELLED' else 'Solicitud de cancelación enviada al administrador'
+        
+        return jsonify({
+            'status': 'success',
+            'message': message,
+            'reservation': reserva.to_dict()
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'status': 'error'
+        }), 500
+
+
 # ==================== ENDPOINTS ADMIN ====================
 
 @reservas_bp.route('/pending', methods=['GET'])
@@ -286,6 +372,144 @@ def reject_reservation(reservation_id):
         }), 200
         
     except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'status': 'error'
+        }), 500
+
+
+@reservas_bp.route('/cancellation-requests', methods=['GET'])
+@require_auth
+@require_role('Admin')
+def get_cancellation_requests():
+    """
+    Obtener todas las solicitudes de cancelación pendientes. Solo Admin.
+    
+    Returns:
+        200: Lista de reservas con solicitud de cancelación
+    """
+    try:
+        from reservas.models.reserva import Reserva
+        reservas = Reserva.query.filter_by(estado='CANCELLATION_REQUESTED').all()
+        
+        return jsonify({
+            'status': 'success',
+            'reservations': [r.to_dict() for r in reservas]
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'status': 'error'
+        }), 500
+
+
+@reservas_bp.route('/<reservation_id>/approve-cancellation', methods=['POST'])
+@require_auth
+@require_role('Admin')
+def approve_cancellation(reservation_id):
+    """
+    Aprobar una solicitud de cancelación (CANCELLATION_REQUESTED -> CANCELLED). Solo Admin.
+    
+    Args:
+        reservation_id: UUID de la reserva
+        
+    Returns:
+        200: Cancelación aprobada
+        400: No se puede aprobar
+        404: Reserva no encontrada
+    """
+    try:
+        from reservas.models.reserva import Reserva
+        from spaces.models.space import Space
+        from websocket.socket_manager import emit_reservation_cancelled
+        
+        reserva = Reserva.query.get(reservation_id)
+        if not reserva:
+            return jsonify({
+                'error': 'Reserva no encontrada',
+                'status': 'error'
+            }), 404
+        
+        if reserva.estado != 'CANCELLATION_REQUESTED':
+            return jsonify({
+                'error': f'La reserva no tiene solicitud de cancelación pendiente (estado: {reserva.estado})',
+                'status': 'error'
+            }), 400
+        
+        reserva.estado = 'CANCELLED'
+        db.session.commit()
+        
+        # Obtener plano_id para el WebSocket
+        space = Space.query.get(reserva.espacio_id)
+        plano_id = str(space.plano_id) if space and space.plano_id else None
+        
+        emit_reservation_cancelled(reserva.to_dict(), plano_id)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Cancelación aprobada',
+            'reservation': reserva.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'error': str(e),
+            'status': 'error'
+        }), 500
+
+
+@reservas_bp.route('/<reservation_id>/reject-cancellation', methods=['POST'])
+@require_auth
+@require_role('Admin')
+def reject_cancellation(reservation_id):
+    """
+    Rechazar una solicitud de cancelación (CANCELLATION_REQUESTED -> RESERVED). Solo Admin.
+    
+    Args:
+        reservation_id: UUID de la reserva
+        
+    Returns:
+        200: Solicitud rechazada, reserva mantiene estado RESERVED
+        400: No se puede rechazar
+        404: Reserva no encontrada
+    """
+    try:
+        from reservas.models.reserva import Reserva
+        from spaces.models.space import Space
+        from websocket.socket_manager import emit_reservation_updated
+        
+        reserva = Reserva.query.get(reservation_id)
+        if not reserva:
+            return jsonify({
+                'error': 'Reserva no encontrada',
+                'status': 'error'
+            }), 404
+        
+        if reserva.estado != 'CANCELLATION_REQUESTED':
+            return jsonify({
+                'error': f'La reserva no tiene solicitud de cancelación pendiente (estado: {reserva.estado})',
+                'status': 'error'
+            }), 400
+        
+        reserva.estado = 'RESERVED'
+        db.session.commit()
+        
+        # Obtener plano_id para el WebSocket
+        space = Space.query.get(reserva.espacio_id)
+        plano_id = str(space.plano_id) if space and space.plano_id else None
+        
+        emit_reservation_updated(reserva.to_dict(), plano_id)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Solicitud de cancelación rechazada, la reserva permanece activa',
+            'reservation': reserva.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
         return jsonify({
             'error': str(e),
             'status': 'error'

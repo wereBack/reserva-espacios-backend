@@ -301,3 +301,71 @@ class ReservaService:
         """
         return Reserva.query.filter_by(estado=ReservationStatus.PENDING).all()
     
+    @classmethod
+    def get_reservations_by_user(cls, user_id: str) -> list:
+        """
+        Obtiene todas las reservas de un usuario específico.
+        Incluye reservas activas y el historial reciente.
+        
+        Args:
+            user_id: ID del usuario (de Keycloak)
+            
+        Returns:
+            Lista de reservas del usuario
+        """
+        return Reserva.query.filter_by(user_id=user_id).order_by(Reserva.created_at.desc()).all()
+    
+    @classmethod
+    def request_cancellation(cls, reservation_id: str, user_id: str) -> Tuple[Optional[Reserva], Optional[str]]:
+        """
+        Solicita la cancelación de una reserva confirmada.
+        Cambia el estado a CANCELLATION_REQUESTED para que el admin lo revise.
+        
+        Args:
+            reservation_id: ID de la reserva
+            user_id: ID del usuario que solicita la cancelación
+            
+        Returns:
+            Tuple[Reserva, None] si éxito, Tuple[None, error_message] si falla
+        """
+        try:
+            reserva = Reserva.query.get(reservation_id)
+            if not reserva:
+                return None, "Reserva no encontrada"
+            
+            # Verificar que la reserva pertenezca al usuario
+            if reserva.user_id != user_id:
+                return None, "No tienes permiso para cancelar esta reserva"
+            
+            if reserva.estado == ReservationStatus.PENDING:
+                # Si está pendiente, cancelar directamente
+                reserva.estado = ReservationStatus.CANCELLED
+                db.session.commit()
+                
+                # Obtener plano_id para el WebSocket
+                space = Space.query.get(reserva.espacio_id)
+                plano_id = str(space.plano_id) if space and space.plano_id else None
+                
+                emit_reservation_cancelled(reserva.to_dict(), plano_id)
+                logger.info(f"Reserva {reservation_id} cancelada por usuario")
+                return reserva, None
+                
+            elif reserva.estado == ReservationStatus.RESERVED:
+                # Si está confirmada, marcar como solicitud de cancelación
+                reserva.estado = "CANCELLATION_REQUESTED"
+                db.session.commit()
+                
+                # Obtener plano_id para el WebSocket
+                space = Space.query.get(reserva.espacio_id)
+                plano_id = str(space.plano_id) if space and space.plano_id else None
+                
+                emit_reservation_updated(reserva.to_dict(), plano_id)
+                logger.info(f"Solicitud de cancelación para reserva {reservation_id}")
+                return reserva, None
+            else:
+                return None, f"La reserva no está activa (estado: {reserva.estado})"
+                
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error solicitando cancelación: {e}")
+            return None, str(e)    
