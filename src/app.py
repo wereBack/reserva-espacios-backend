@@ -17,9 +17,11 @@ from spaces.routes import spaces_bp, zones_bp
 from eventos.routes import eventos_bp
 from planos.routes import planos_bp
 from reservas.routes import reservas_bp
+from user_profiles.routes import user_profiles_bp
 
 # Importo modelos sin blueprint para que SQLAlchemy los registre
 from reservas.models.reserva import Reserva  # noqa: F401
+from user_profiles.models.user_profile import UserProfile  # noqa: F401
 
 # Importo WebSocket
 from websocket import socketio, init_socketio
@@ -87,6 +89,7 @@ def create_app(config_instance=None):
     app.register_blueprint(eventos_bp)
     app.register_blueprint(planos_bp)
     app.register_blueprint(reservas_bp)
+    app.register_blueprint(user_profiles_bp)
     
     @app.errorhandler(404)
     def not_found(error):
