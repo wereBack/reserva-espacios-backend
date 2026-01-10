@@ -14,7 +14,7 @@ reservas_bp = Blueprint('reservas', __name__, url_prefix='/api/reservas')
 @require_auth
 def create_reservation():
     """
-    Crear una nueva reserva temporal. Requiere autenticacion.
+    Crear una nueva reserva temporal. Requiere autenticacion y perfil completo.
     
     Request Body:
         {
@@ -26,6 +26,7 @@ def create_reservation():
     Returns:
         201: Reserva creada exitosamente
         400: Datos inválidos o espacio no disponible
+        403: Perfil incompleto
         500: Error interno
     """
     try:
@@ -40,6 +41,24 @@ def create_reservation():
         # Obtener usuario autenticado
         current_user = get_current_user()
         user_id = current_user.get('id') if current_user else None
+        
+        if not user_id:
+            return jsonify({
+                'error': 'Usuario no identificado',
+                'status': 'error'
+            }), 401
+        
+        # Verificar que el perfil esté completo
+        from user_profiles.models.user_profile import UserProfile
+        profile = UserProfile.query.filter_by(user_id=user_id).first()
+        
+        if not profile or not profile.is_complete():
+            return jsonify({
+                'error': 'Debes completar tu perfil antes de hacer una reserva',
+                'status': 'error',
+                'code': 'PROFILE_INCOMPLETE'
+            }), 403
+        
         asignee = data.get('asignee') or (current_user.get('name') if current_user else None)
         
         reserva, error = ReservaService.create_reservation(
@@ -308,6 +327,7 @@ def get_pending_reservations():
 def confirm_reservation(reservation_id):
     """
     Confirmar una reserva pendiente (PENDING -> RESERVED). Solo Admin.
+    Al confirmar, actualiza el nombre del espacio al nombre de la empresa o del cliente.
     
     Args:
         reservation_id: UUID de la reserva
@@ -318,6 +338,9 @@ def confirm_reservation(reservation_id):
         404: Reserva no encontrada
     """
     try:
+        from spaces.models.space import Space
+        from user_profiles.models.user_profile import UserProfile
+        
         reserva, error = ReservaService.confirm_reservation(reservation_id)
         
         if error:
@@ -327,11 +350,35 @@ def confirm_reservation(reservation_id):
                 'status': 'error'
             }), status_code
         
-        return jsonify({
+        # Actualizar el nombre del espacio al nombre de la empresa o del cliente
+        space = Space.query.get(reserva.espacio_id)
+        updated_space_name = None
+        if space and reserva.user_id:
+            profile = UserProfile.query.filter_by(user_id=reserva.user_id).first()
+            new_name = None
+            
+            # Prioridad: empresa > asignee de la reserva
+            if profile and profile.company and profile.company.strip():
+                new_name = profile.company.strip()
+            elif reserva.asignee:
+                new_name = reserva.asignee
+            
+            if new_name:
+                space.name = new_name
+                updated_space_name = new_name
+                db.session.commit()
+        
+        response_data = {
             'status': 'success',
             'message': 'Reserva confirmada exitosamente',
             'reservation': reserva.to_dict()
-        }), 200
+        }
+        
+        # Incluir el nombre actualizado del space si cambió
+        if updated_space_name:
+            response_data['updated_space_name'] = updated_space_name
+        
+        return jsonify(response_data), 200
         
     except Exception as e:
         return jsonify({

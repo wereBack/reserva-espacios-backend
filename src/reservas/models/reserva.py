@@ -44,8 +44,9 @@ class Reserva(db.Model):
     def to_dict(self):
         """
         Convierte el modelo a diccionario para serialización JSON.
+        Incluye datos del perfil del cliente para reservas confirmadas.
         """
-        return {
+        data = {
             'id': str(self.id),
             'estado': self.estado,
             'asignee': self.asignee,
@@ -56,6 +57,22 @@ class Reserva(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
+        
+        # Incluir datos del perfil del cliente para reservas confirmadas
+        if self.estado == 'RESERVED' and self.user_id:
+            try:
+                from user_profiles.models.user_profile import UserProfile
+                profile = UserProfile.query.filter_by(user_id=self.user_id).first()
+                if profile:
+                    data['client_profile'] = {
+                        'company': profile.company,
+                        'linkedin': profile.linkedin,
+                        'email': profile.email,
+                    }
+            except Exception:
+                pass  # Si falla, simplemente no incluir el perfil
+        
+        return data
 
     @classmethod
     def from_dict(cls, data):
