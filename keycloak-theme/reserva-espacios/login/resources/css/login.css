@@ -1,36 +1,47 @@
 /* ============================================
-   TEMA PERSONALIZADO - RESERVA DE ESPACIOS
+   TEMA UNIVERSIDAD DE MONTEVIDEO
+   Reserva de Espacios - Login
    ============================================ */
 
 /* Google Fonts - Inter */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* Variables de color (mismas que la app) */
+/* Variables de color - Manual de Identidad UM */
 :root {
-    --re-bg: #f8f9fb;
-    --re-card: #ffffff;
-    --re-border: #e5e7eb;
-    --re-text: #1f2937;
-    --re-text-secondary: #6b7280;
-    --re-text-muted: #9ca3af;
-    --re-success: #10b981;
-    --re-success-dark: #059669;
-    --re-primary: #6366f1;
-    --re-primary-dark: #4f46e5;
-    --re-danger: #ef4444;
-    --re-danger-bg: #fee2e2;
-    --re-radius: 12px;
-    --re-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+    /* Colores Institucionales */
+    --um-blue: #003CA2;
+    --um-blue-dark: #002d7a;
+    --um-blue-light: #0052d9;
+    --um-gold: #A2832F;
+    --um-gold-light: #c9a754;
+    --um-gold-dark: #8a6f28;
+
+    /* UI Colors */
+    --um-bg: #f8fafc;
+    --um-card: #ffffff;
+    --um-border: #e2e8f0;
+    --um-text: #1e293b;
+    --um-text-secondary: #64748b;
+    --um-text-muted: #94a3b8;
+
+    /* States */
+    --um-success: #10b981;
+    --um-danger: #ef4444;
+    --um-danger-bg: #fee2e2;
+
+    /* Design tokens */
+    --um-radius: 12px;
+    --um-shadow: 0 25px 50px -12px rgba(0, 60, 162, 0.2);
 }
 
 /* ===== FONDO PRINCIPAL ===== */
 .login-pf body {
-    background: linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%);
+    background: #1e293b;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     min-height: 100vh;
 }
 
-/* Patron de fondo sutil */
+/* Patrón de fondo sutil */
 .login-pf body::before {
     content: '';
     position: fixed;
@@ -38,9 +49,9 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-image: 
-        radial-gradient(circle at 25% 25%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 75% 75%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+    background-image:
+        radial-gradient(ellipse at 20% 30%, rgba(0, 60, 162, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(162, 131, 47, 0.05) 0%, transparent 50%);
     pointer-events: none;
     z-index: 0;
 }
@@ -58,14 +69,27 @@
 
 /* ===== CARD DE LOGIN ===== */
 .login-pf .card-pf {
-    background: var(--re-card);
-    border-radius: var(--re-radius);
-    box-shadow: var(--re-shadow);
-    padding: 40px;
-    max-width: 420px;
+    background: var(--um-card);
+    border-radius: var(--um-radius);
+    box-shadow: var(--um-shadow);
+    padding: 48px 40px;
+    max-width: 440px;
     width: 100%;
     border: none;
     margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Línea decorativa superior con colores UM */
+.login-pf .card-pf::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--um-blue) 0%, var(--um-gold) 100%);
 }
 
 /* ===== HEADER ===== */
@@ -75,21 +99,30 @@
 }
 
 #kc-header-wrapper {
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--re-text);
-    background: linear-gradient(135deg, var(--re-primary) 0%, #8b5cf6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-size: 0;
+    color: transparent;
+    display: block;
 }
 
-/* Subtitulo */
+/* Logo de la UM en lugar del texto */
+#kc-header-wrapper::before {
+    content: '';
+    display: block;
+    width: 200px;
+    height: 50px;
+    margin: 0 auto;
+    background-image: url('../img/logo-um.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* Subtítulo */
 .login-pf #kc-page-title {
     font-size: 15px;
-    color: var(--re-text-secondary);
+    color: var(--um-text-secondary);
     text-align: center;
-    margin-bottom: 24px;
+    margin-bottom: 28px;
     font-weight: 500;
 }
 
@@ -109,10 +142,12 @@
 
 .login-pf label {
     display: block;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    color: var(--re-text);
+    color: var(--um-text);
     margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .login-pf input[type="text"],
@@ -120,12 +155,12 @@
 .login-pf input[type="email"] {
     width: 100%;
     padding: 14px 16px;
-    border: 2px solid var(--re-border);
+    border: 2px solid var(--um-border);
     border-radius: 10px;
     font-size: 15px;
     font-family: inherit;
-    background: var(--re-bg);
-    color: var(--re-text);
+    background: var(--um-bg);
+    color: var(--um-text);
     transition: all 0.2s ease;
     box-sizing: border-box;
 }
@@ -134,15 +169,15 @@
 .login-pf input[type="password"]:focus,
 .login-pf input[type="email"]:focus {
     outline: none;
-    border-color: var(--re-primary);
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
-    background: var(--re-card);
+    border-color: var(--um-blue);
+    box-shadow: 0 0 0 4px rgba(0, 60, 162, 0.12);
+    background: var(--um-card);
 }
 
 .login-pf input[type="text"]::placeholder,
 .login-pf input[type="password"]::placeholder,
 .login-pf input[type="email"]::placeholder {
-    color: var(--re-text-muted);
+    color: var(--um-text-muted);
 }
 
 /* ===== CHECKBOX RECORDARME ===== */
@@ -153,27 +188,29 @@
 .login-pf .checkbox label {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     font-size: 14px;
     font-weight: 500;
-    color: var(--re-text-secondary);
+    color: var(--um-text-secondary);
     cursor: pointer;
+    text-transform: none;
+    letter-spacing: 0;
 }
 
 .login-pf .checkbox input[type="checkbox"] {
     width: 18px;
     height: 18px;
-    accent-color: var(--re-primary);
+    accent-color: var(--um-blue);
     cursor: pointer;
 }
 
-/* ===== BOTON PRINCIPAL ===== */
+/* ===== BOTÓN PRINCIPAL ===== */
 .login-pf .btn-primary,
 .login-pf input[type="submit"],
 #kc-login input[type="submit"] {
     width: 100%;
-    padding: 14px 24px;
-    background: linear-gradient(135deg, var(--re-primary) 0%, #8b5cf6 100%);
+    padding: 15px 24px;
+    background: linear-gradient(135deg, var(--um-blue) 0%, var(--um-blue-dark) 100%);
     border: none;
     border-radius: 10px;
     font-size: 15px;
@@ -183,27 +220,29 @@
     transition: all 0.2s ease;
     font-family: inherit;
     text-transform: none;
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 4px 14px rgba(0, 60, 162, 0.3);
+    letter-spacing: 0.3px;
 }
 
 .login-pf .btn-primary:hover,
 .login-pf input[type="submit"]:hover,
 #kc-login input[type="submit"]:hover {
-    background: linear-gradient(135deg, var(--re-primary-dark) 0%, #7c3aed 100%);
+    background: linear-gradient(135deg, var(--um-blue-light) 0%, var(--um-blue) 100%);
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+    box-shadow: 0 6px 20px rgba(0, 60, 162, 0.4);
 }
 
 .login-pf .btn-primary:active,
 .login-pf input[type="submit"]:active {
     transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 60, 162, 0.3);
 }
 
-/* ===== BOTON SECUNDARIO ===== */
+/* ===== BOTÓN SECUNDARIO ===== */
 .login-pf .btn-default {
-    background: var(--re-bg);
-    border: 2px solid var(--re-border);
-    color: var(--re-text);
+    background: var(--um-bg);
+    border: 2px solid var(--um-border);
+    color: var(--um-text);
     border-radius: 10px;
     padding: 12px 20px;
     font-weight: 600;
@@ -211,37 +250,38 @@
 }
 
 .login-pf .btn-default:hover {
-    background: var(--re-card);
-    border-color: var(--re-text-muted);
+    background: var(--um-card);
+    border-color: var(--um-blue);
+    color: var(--um-blue);
 }
 
 /* ===== LINKS ===== */
 .login-pf a {
-    color: var(--re-primary);
+    color: var(--um-blue);
     text-decoration: none;
     font-weight: 500;
     transition: color 0.15s ease;
 }
 
 .login-pf a:hover {
-    color: var(--re-primary-dark);
+    color: var(--um-gold);
     text-decoration: underline;
 }
 
 /* Link de registro */
 #kc-registration {
     text-align: center;
-    margin-top: 24px;
+    margin-top: 28px;
     padding-top: 24px;
-    border-top: 1px solid var(--re-border);
+    border-top: 1px solid var(--um-border);
 }
 
 #kc-registration span {
-    color: var(--re-text-secondary);
+    color: var(--um-text-secondary);
     font-size: 14px;
 }
 
-/* Link de olvidar contrasena */
+/* Link de olvidar contraseña */
 .login-pf #kc-form-options {
     margin-top: 16px;
     text-align: right;
@@ -249,11 +289,11 @@
 
 .login-pf #kc-form-options a {
     font-size: 13px;
-    color: var(--re-text-muted);
+    color: var(--um-text-muted);
 }
 
 .login-pf #kc-form-options a:hover {
-    color: var(--re-primary);
+    color: var(--um-blue);
 }
 
 /* ===== ALERTAS Y ERRORES ===== */
@@ -267,7 +307,7 @@
 
 .login-pf .alert-error,
 .login-pf .alert-danger {
-    background: var(--re-danger-bg);
+    background: var(--um-danger-bg);
     border: 1px solid #fecaca;
     color: #b91c1c;
 }
@@ -287,7 +327,7 @@
 .login-pf .alert-info {
     background: #dbeafe;
     border: 1px solid #bfdbfe;
-    color: #1e40af;
+    color: var(--um-blue);
 }
 
 /* ===== ICONOS DE INPUT ===== */
@@ -298,9 +338,9 @@
 
 /* ===== SOCIAL PROVIDERS ===== */
 #kc-social-providers {
-    margin-top: 24px;
+    margin-top: 28px;
     padding-top: 24px;
-    border-top: 1px solid var(--re-border);
+    border-top: 1px solid var(--um-border);
 }
 
 #kc-social-providers ul {
@@ -322,36 +362,39 @@
     justify-content: center;
     gap: 10px;
     padding: 12px 16px;
-    background: var(--re-bg);
-    border: 2px solid var(--re-border);
+    background: var(--um-bg);
+    border: 2px solid var(--um-border);
     border-radius: 10px;
-    color: var(--re-text);
+    color: var(--um-text);
     font-weight: 600;
     text-decoration: none;
     transition: all 0.2s ease;
 }
 
 #kc-social-providers a:hover {
-    background: var(--re-card);
-    border-color: var(--re-text-muted);
+    background: var(--um-card);
+    border-color: var(--um-blue);
+    color: var(--um-blue);
 }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 480px) {
     .login-pf .card-pf {
-        padding: 28px 20px;
+        padding: 36px 24px;
         margin: 16px;
+        border-radius: 16px;
     }
 
     #kc-header-wrapper {
-        font-size: 22px;
+        font-size: 20px;
     }
 
     .login-pf input[type="text"],
     .login-pf input[type="password"],
     .login-pf input[type="email"] {
         padding: 12px 14px;
-        font-size: 16px; /* Evita zoom en iOS */
+        font-size: 16px;
+        /* Evita zoom en iOS */
     }
 }
 
@@ -366,8 +409,9 @@
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(12px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -375,12 +419,12 @@
 }
 
 .login-pf .card-pf {
-    animation: fadeIn 0.3s ease-out;
+    animation: fadeIn 0.35s ease-out;
 }
 
 /* ===== MEJORAS DE ACCESIBILIDAD ===== */
 .login-pf *:focus-visible {
-    outline: 2px solid var(--re-primary);
+    outline: 2px solid var(--um-blue);
     outline-offset: 2px;
 }
 
@@ -391,3 +435,31 @@
     cursor: wait;
 }
 
+/* ===== PASSWORD TOGGLE BUTTON ===== */
+.login-pf .pf-c-button.pf-m-control {
+    background: transparent;
+    border: none;
+    color: var(--um-text-muted);
+    padding: 8px;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.login-pf .pf-c-button.pf-m-control:hover {
+    color: var(--um-blue);
+}
+
+/* ===== FOOTER BRANDING ===== */
+.login-pf .card-pf::after {
+    content: 'Universidad de Montevideo';
+    display: block;
+    text-align: center;
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--um-border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--um-text-muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
