@@ -482,3 +482,6 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/dotenv,macos,windows,linux,visualstudiocode,flask,pythonvanilla,python,venv,intellij+all
+
+# SSL Certificates (Let's Encrypt)
+certbot/
