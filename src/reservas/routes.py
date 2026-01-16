@@ -485,19 +485,35 @@ def approve_cancellation(reservation_id):
             }), 400
         
         reserva.estado = 'CANCELLED'
-        db.session.commit()
         
         # Obtener plano_id para el WebSocket
         space = Space.query.get(reserva.espacio_id)
         plano_id = str(space.plano_id) if space and space.plano_id else None
         
+        # Resetear nombre del stand a un nombre genérico
+        updated_space_name = None
+        if space:
+            # Obtener todos los espacios del plano ordenados por posición
+            plano_spaces = Space.query.filter_by(plano_id=space.plano_id).order_by(Space.x, Space.y).all()
+            space_index = next((i for i, s in enumerate(plano_spaces) if s.id == space.id), 0)
+            new_name = f"Stand {space_index + 1}"
+            space.name = new_name
+            updated_space_name = new_name
+        
+        db.session.commit()
+        
         emit_reservation_cancelled(reserva.to_dict(), plano_id)
         
-        return jsonify({
+        response_data = {
             'status': 'success',
             'message': 'Cancelación aprobada',
             'reservation': reserva.to_dict()
-        }), 200
+        }
+        
+        if updated_space_name:
+            response_data['updated_space_name'] = updated_space_name
+        
+        return jsonify(response_data), 200
         
     except Exception as e:
         db.session.rollback()
