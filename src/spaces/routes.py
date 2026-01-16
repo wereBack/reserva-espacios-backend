@@ -87,6 +87,20 @@ def update_space(space_id):
             space.price = data["price"]
         if "active" in data:
             space.active = data["active"]
+        # Position and size fields
+        if "x" in data:
+            space.x = data["x"]
+        if "y" in data:
+            space.y = data["y"]
+        if "width" in data:
+            space.width = data["width"]
+        if "height" in data:
+            space.height = data["height"]
+        if "color" in data:
+            space.color = data["color"]
+        # Zone association
+        if "zone_id" in data:
+            space.zone_id = data["zone_id"]
         
         # Procesar cambio de estado (status)
         if "status" in data:
@@ -320,12 +334,22 @@ def update_zone(zone_id):
     try:
         if "name" in data:
             zone.name = data["name"]
+        if "description" in data:
+            zone.description = data["description"]
         if "price" in data:
             zone.price = data["price"]
         if "color" in data:
             zone.color = data["color"]
         if "active" in data:
             zone.active = data["active"]
+        if "x" in data:
+            zone.x = data["x"]
+        if "y" in data:
+            zone.y = data["y"]
+        if "width" in data:
+            zone.width = data["width"]
+        if "height" in data:
+            zone.height = data["height"]
         
         db.session.commit()
         return jsonify(zone.to_dict()), 200
