@@ -18,6 +18,7 @@ from websocket.socket_manager import (
     emit_reservation_updated,
     emit_reservation_expired,
     emit_reservation_cancelled,
+    emit_cancellation_requested,
 )
 
 logger = logging.getLogger(__name__)
@@ -359,7 +360,7 @@ class ReservaService:
                 space = Space.query.get(reserva.espacio_id)
                 plano_id = str(space.plano_id) if space and space.plano_id else None
                 
-                emit_reservation_updated(reserva.to_dict(), plano_id)
+                emit_cancellation_requested(reserva.to_dict(), plano_id)
                 logger.info(f"Solicitud de cancelación para reserva {reservation_id}")
                 return reserva, None
             else:

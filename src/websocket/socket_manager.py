@@ -211,6 +211,25 @@ def emit_reservation_cancelled(reservation_data: dict, plano_id: str = None):
     socketio.emit('reservation_cancelled', event_data, namespace='/reservas')
 
 
+def emit_cancellation_requested(reservation_data: dict, plano_id: str = None):
+    """
+    Emite un evento cuando se solicita la cancelación de una reserva.
+    Usado para notificar al admin que hay nuevas solicitudes.
+    
+    Args:
+        reservation_data: Datos de la reserva
+        plano_id: ID del plano (incluido en el payload para filtrar en frontend)
+    """
+    event_data = {
+        'event': 'cancellation_requested',
+        'reservation': reservation_data,
+        'plano_id': plano_id
+    }
+    
+    # Broadcast a todos los clientes conectados al namespace
+    socketio.emit('cancellation_requested', event_data, namespace='/reservas')
+
+
 def emit_space_updated(space_data: dict, plano_id: str = None):
     """
     Emite un evento cuando se actualiza un espacio (stand).
