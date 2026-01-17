@@ -26,6 +26,7 @@ class Plano(db.Model):
     url = db.Column(db.String(512), nullable=False)
     width = db.Column(db.Integer, nullable=False)
     height = db.Column(db.Integer, nullable=False)
+    pixels_per_meter = db.Column(db.Float, nullable=True)  # Scale calibration
     evento_id = db.Column(UUID_TYPE, db.ForeignKey('eventos.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = db.Column(
@@ -52,6 +53,7 @@ class Plano(db.Model):
             'url': self.url,
             'width': self.width,
             'height': self.height,
+            'pixels_per_meter': self.pixels_per_meter,
             'evento_id': str(self.evento_id) if self.evento_id else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
@@ -70,6 +72,7 @@ class Plano(db.Model):
             url=data.get('url'),
             width=data.get('width'),
             height=data.get('height'),
+            pixels_per_meter=data.get('pixels_per_meter'),
             evento_id=data.get('evento_id'),
         )
 

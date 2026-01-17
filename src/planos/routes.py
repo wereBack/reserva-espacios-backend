@@ -96,6 +96,7 @@ def create_plano():
             width=data.get('width'),
             height=data.get('height'),
             url=data.get('url'),
+            pixels_per_meter=data.get('pixels_per_meter'),
             evento_id=data.get('evento_id')
         )
         db.session.add(new_plano)
@@ -166,6 +167,7 @@ def update_plano(plano_id):
         plano.width = data.get('width', plano.width)
         plano.height = data.get('height', plano.height)
         plano.url = data.get('url', plano.url)
+        plano.pixels_per_meter = data.get('pixels_per_meter', plano.pixels_per_meter)
         plano.evento_id = data.get('evento_id', plano.evento_id)
 
         # Limpiar espacios y zonas existentes (simple replacement strategy)
