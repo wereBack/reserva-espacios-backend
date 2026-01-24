@@ -4,5 +4,4 @@ Modelos del módulo eventos.
 
 from .evento import Evento
 
-__all__ = ['Evento']
-
+__all__ = ["Evento"]

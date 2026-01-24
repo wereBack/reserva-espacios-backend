@@ -2,14 +2,15 @@
 Endpoints para gestión de espacios (stands) y reservas.
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
+
+from auth import get_current_user, require_auth, require_role
 from database import db
-from spaces.models.space import Space
-from spaces.models.zone import Zone
 from reservas.models.reserva import Reserva
 from reservas.service import ReservaService
+from spaces.models.space import Space
+from spaces.models.zone import Zone
 from websocket.socket_manager import emit_reservation_cancelled, emit_space_updated
-from auth import require_auth, require_role, get_current_user
 
 # Blueprint para endpoints de espacios
 spaces_bp = Blueprint("spaces", __name__, url_prefix="/spaces")
@@ -24,16 +25,16 @@ def get_spaces():
 
 @spaces_bp.route("/", methods=["POST"])
 @require_auth
-@require_role('Admin')
+@require_role("Admin")
 def create_space():
     """Crear un nuevo espacio (stand) individual. Solo Admin."""
     data = request.json or {}
-    
+
     # Validar que tenga plano_id
     plano_id = data.get("plano_id")
     if not plano_id:
         return jsonify({"error": "plano_id es requerido", "status": "error"}), 400
-    
+
     try:
         new_space = Space(
             kind=data.get("kind", "rect"),
@@ -50,10 +51,10 @@ def create_space():
         )
         db.session.add(new_space)
         db.session.commit()
-        
+
         # Emitir evento WebSocket
         emit_space_updated(new_space.to_dict(), plano_id)
-        
+
         return jsonify(new_space.to_dict()), 201
     except Exception as e:
         db.session.rollback()
@@ -71,15 +72,15 @@ def get_space(space_id):
 
 @spaces_bp.route("/<string:space_id>", methods=["PATCH"])
 @require_auth
-@require_role('Admin')
+@require_role("Admin")
 def update_space(space_id):
     """Actualizar un espacio (nombre, precio, estado, etc). Solo Admin."""
     space = Space.query.get(space_id)
     if not space:
         return jsonify({"error": "Espacio no encontrado", "status": "error"}), 404
-    
+
     data = request.json or {}
-    
+
     try:
         if "name" in data:
             space.name = data["name"]
@@ -101,7 +102,7 @@ def update_space(space_id):
         # Zone association
         if "zone_id" in data:
             space.zone_id = data["zone_id"]
-        
+
         # Procesar cambio de estado (status)
         if "status" in data:
             status = data["status"]
@@ -147,14 +148,14 @@ def update_space(space_id):
                         espacio_id=space_id,
                     )
                     db.session.add(new_reserva)
-        
+
         db.session.commit()
-        
+
         # Emitir evento WebSocket para actualizar otros clientes
         space_data = space.to_dict()
         plano_id = str(space.plano_id) if space.plano_id else None
         emit_space_updated(space_data, plano_id)
-        
+
         return jsonify(space_data), 200
     except Exception as e:
         db.session.rollback()
@@ -168,27 +169,27 @@ def reservar_space(space_id):
     space = Space.query.get(space_id)
     if not space:
         return jsonify({"error": "Espacio no encontrado", "status": "error"}), 404
-    
+
     if not space.active:
         return jsonify({"error": "El stand está bloqueado", "status": "error"}), 400
-    
+
     data = request.json or {}
-    
+
     # Obtener datos del usuario autenticado
     current_user = get_current_user()
-    user_id = current_user.get('id') if current_user else data.get("user_id")
-    asignee = data.get("asignee") or current_user.get('name') if current_user else None
-    
+    user_id = current_user.get("id") if current_user else data.get("user_id")
+    asignee = data.get("asignee") or current_user.get("name") if current_user else None
+
     # Usar el servicio que emite WebSocket
     reserva, error = ReservaService.create_reservation(
         space_id=space_id,
         user_id=user_id,
         asignee=asignee,
     )
-    
+
     if error:
         return jsonify({"error": error, "status": "error"}), 400
-    
+
     return jsonify(reserva.to_dict()), 201
 
 
@@ -199,19 +200,19 @@ def cancelar_reserva(space_id):
     reserva = Reserva.query.filter_by(espacio_id=space_id).first()
     if not reserva:
         return jsonify({"error": "No hay reserva para este stand", "status": "error"}), 404
-    
+
     try:
         # Guardar datos para el evento antes de eliminar
         reserva_dict = reserva.to_dict()
         space = Space.query.get(space_id)
         plano_id = str(space.plano_id) if space and space.plano_id else None
-        
+
         db.session.delete(reserva)
         db.session.commit()
-        
+
         # Emitir evento WebSocket
         emit_reservation_cancelled(reserva_dict, plano_id)
-        
+
         return jsonify({"message": "Reserva cancelada"}), 200
     except Exception as e:
         db.session.rollback()
@@ -220,13 +221,13 @@ def cancelar_reserva(space_id):
 
 @spaces_bp.route("/<string:space_id>/bloquear", methods=["PATCH"])
 @require_auth
-@require_role('Admin')
+@require_role("Admin")
 def bloquear_space(space_id):
     """Admin bloquea un stand. Solo Admin."""
     space = Space.query.get(space_id)
     if not space:
         return jsonify({"error": "Espacio no encontrado", "status": "error"}), 404
-    
+
     try:
         space.active = False
         db.session.commit()
@@ -238,13 +239,13 @@ def bloquear_space(space_id):
 
 @spaces_bp.route("/<string:space_id>/desbloquear", methods=["PATCH"])
 @require_auth
-@require_role('Admin')
+@require_role("Admin")
 def desbloquear_space(space_id):
     """Admin desbloquea un stand. Solo Admin."""
     space = Space.query.get(space_id)
     if not space:
         return jsonify({"error": "Espacio no encontrado", "status": "error"}), 404
-    
+
     try:
         space.active = True
         db.session.commit()
@@ -256,13 +257,13 @@ def desbloquear_space(space_id):
 
 @spaces_bp.route("/<string:space_id>/reserva/confirmar", methods=["PATCH"])
 @require_auth
-@require_role('Admin')
+@require_role("Admin")
 def confirmar_reserva(space_id):
     """Confirmar una reserva pendiente. Solo Admin."""
     reserva = Reserva.query.filter_by(espacio_id=space_id).first()
     if not reserva:
         return jsonify({"error": "No hay reserva para este stand", "status": "error"}), 404
-    
+
     try:
         reserva.estado = "confirmada"
         db.session.commit()
@@ -279,16 +280,16 @@ zones_bp = Blueprint("zones", __name__, url_prefix="/zones")
 
 @zones_bp.route("/", methods=["POST"])
 @require_auth
-@require_role('Admin')
+@require_role("Admin")
 def create_zone():
     """Crear una nueva zona individual. Solo Admin."""
     data = request.json or {}
-    
+
     # Validar que tenga plano_id
     plano_id = data.get("plano_id")
     if not plano_id:
         return jsonify({"error": "plano_id es requerido", "status": "error"}), 400
-    
+
     try:
         new_zone = Zone(
             kind=data.get("kind", "rect"),
@@ -304,7 +305,7 @@ def create_zone():
         )
         db.session.add(new_zone)
         db.session.commit()
-        
+
         return jsonify(new_zone.to_dict()), 201
     except Exception as e:
         db.session.rollback()
@@ -322,15 +323,15 @@ def get_zone(zone_id):
 
 @zones_bp.route("/<string:zone_id>", methods=["PATCH"])
 @require_auth
-@require_role('Admin')
+@require_role("Admin")
 def update_zone(zone_id):
     """Actualizar una zona (nombre, precio, color, etc). Solo Admin."""
     zone = Zone.query.get(zone_id)
     if not zone:
         return jsonify({"error": "Zona no encontrada", "status": "error"}), 404
-    
+
     data = request.json or {}
-    
+
     try:
         if "name" in data:
             zone.name = data["name"]
@@ -350,7 +351,7 @@ def update_zone(zone_id):
             zone.width = data["width"]
         if "height" in data:
             zone.height = data["height"]
-        
+
         db.session.commit()
         return jsonify(zone.to_dict()), 200
     except Exception as e:
@@ -360,13 +361,13 @@ def update_zone(zone_id):
 
 @zones_bp.route("/<string:zone_id>", methods=["DELETE"])
 @require_auth
-@require_role('Admin')
+@require_role("Admin")
 def delete_zone(zone_id):
     """Eliminar una zona por ID. Solo Admin."""
     zone = Zone.query.get(zone_id)
     if not zone:
         return jsonify({"error": "Zona no encontrada", "status": "error"}), 404
-    
+
     try:
         db.session.delete(zone)
         db.session.commit()
@@ -378,29 +379,29 @@ def delete_zone(zone_id):
 
 # ==================== DELETE SPACE ====================
 
+
 @spaces_bp.route("/<string:space_id>", methods=["DELETE"])
 @require_auth
-@require_role('Admin')
+@require_role("Admin")
 def delete_space(space_id):
     """Eliminar un espacio (stand) por ID. Solo Admin."""
     space = Space.query.get(space_id)
     if not space:
         return jsonify({"error": "Espacio no encontrado", "status": "error"}), 404
-    
+
     try:
         # Primero eliminar reservas asociadas
         for reserva in space.reservations:
             db.session.delete(reserva)
-        
+
         plano_id = str(space.plano_id) if space.plano_id else None
         db.session.delete(space)
         db.session.commit()
-        
+
         # Emitir evento de eliminación
         emit_space_updated({"id": space_id, "deleted": True}, plano_id)
-        
+
         return jsonify({"message": "Stand eliminado", "id": space_id}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e), "status": "error"}), 500
-

@@ -9,7 +9,7 @@ from sqlalchemy import text
 def get_db():
     """
     Obtiene la instancia de SQLAlchemy desde la app actual.
-    
+
     Returns:
         SQLAlchemy: Instancia de SQLAlchemy
     """
@@ -19,11 +19,11 @@ def get_db():
 def execute_query(query, params=None):
     """
     Ejecuta una consulta SQL de forma segura.
-    
+
     Args:
         query (str): Consulta SQL
         params (dict): Parámetros para la consulta
-        
+
     Returns:
         Result: Resultado de la consulta
     """
@@ -34,7 +34,7 @@ def execute_query(query, params=None):
 def check_database_connection():
     """
     Verifica la conexión con la base de datos.
-    
+
     Returns:
         dict: Estado de la conexión
     """
@@ -56,7 +56,7 @@ def check_database_connection():
 def get_database_info():
     """
     Obtiene información sobre la base de datos.
-    
+
     Returns:
         dict: Información de la base de datos
     """
@@ -70,9 +70,7 @@ def get_database_info():
             "overflow": db.engine.pool.overflow(),
         }
     except Exception as e:
-        return {
-            "error": f"Error obteniendo información de la base de datos: {e}"
-        }
+        return {"error": f"Error obteniendo información de la base de datos: {e}"}
 
 
 def init_database():

@@ -1,0 +1,79 @@
+[project]
+name = "reserva-espacios-backend"
+version = "1.0.0"
+description = "Backend para sistema de reserva de espacios"
+requires-python = ">=3.11"
+
+[tool.ruff]
+# Exclude common directories
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "alembic/versions",
+]
+
+# Same as Black
+line-length = 120
+indent-width = 4
+
+# Target Python 3.11+
+target-version = "py311"
+
+[tool.ruff.lint]
+# Enable rules
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort (import sorting)
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+
+# Ignore specific rules
+ignore = [
+    "E402",   # module-import-not-at-top-of-file (common in Flask apps with dynamic config)
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "B904",   # raise-without-from-inside-except
+    "B007",   # unused-loop-control-variable
+    "B019",   # cached-instance-method
+    "SIM108", # if-else-block-instead-of-if-exp
+    "W291",   # trailing-whitespace (handled by formatter)
+    "ARG001", # unused function argument (common in Flask routes)
+    "ARG002", # unused method argument
+    "ARG003", # unused class method argument
+]
+
+# Allow fix for all enabled rules (when `--fix` is provided)
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+# Tests use fixtures as unused args
+"src/tests/**/*.py" = ["ARG"]
+
+[tool.ruff.format]
+# Use double quotes for strings
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["src/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
