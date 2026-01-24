@@ -11,10 +11,16 @@ from unittest.mock import MagicMock, patch
 class TestCreateReservationEndpoint:
     """Tests para POST /api/reservas"""
 
+    @patch("user_profiles.models.user_profile.UserProfile")
     @patch("reservas.routes.ReservaService")
-    def test_create_reservation_authenticated(self, mock_service, client, auth_headers):
+    def test_create_reservation_authenticated(self, mock_service, mock_user_profile, client, auth_headers):
         """Usuario autenticado puede crear reserva."""
-        # Configurar mock
+        # Mock del perfil de usuario completo
+        mock_profile = MagicMock()
+        mock_profile.is_complete.return_value = True
+        mock_user_profile.query.filter_by.return_value.first.return_value = mock_profile
+
+        # Configurar mock del servicio
         mock_reserva = MagicMock()
         mock_reserva.to_dict.return_value = {
             "id": str(uuid.uuid4()),
@@ -69,9 +75,15 @@ class TestCreateReservationEndpoint:
         data = response.get_json()
         assert "space_id" in data["error"].lower()
 
+    @patch("user_profiles.models.user_profile.UserProfile")
     @patch("reservas.routes.ReservaService")
-    def test_create_reservation_space_not_found(self, mock_service, client, auth_headers):
+    def test_create_reservation_space_not_found(self, mock_service, mock_user_profile, client, auth_headers):
         """Error si el espacio no existe."""
+        # Mock del perfil de usuario completo
+        mock_profile = MagicMock()
+        mock_profile.is_complete.return_value = True
+        mock_user_profile.query.filter_by.return_value.first.return_value = mock_profile
+
         mock_service.create_reservation.return_value = (None, "Espacio no encontrado")
 
         response = client.post(
@@ -241,18 +253,37 @@ class TestAdminEndpoints:
 
         assert response.status_code == 401
 
+    @patch("user_profiles.models.user_profile.UserProfile")
+    @patch("spaces.models.space.Space")
     @patch("reservas.routes.ReservaService")
-    def test_confirm_reservation_admin(self, mock_service, client, admin_auth_headers):
+    def test_confirm_reservation_admin(self, mock_service, mock_space, mock_user_profile, client, admin_auth_headers):
         """Admin puede confirmar reserva."""
+        reservation_id = str(uuid.uuid4())
+        space_id = str(uuid.uuid4())
+
+        # Mock de la reserva
         mock_reserva = MagicMock()
         mock_reserva.to_dict.return_value = {
-            "id": str(uuid.uuid4()),
+            "id": reservation_id,
             "estado": "RESERVED",
         }
+        mock_reserva.espacio_id = space_id
+        mock_reserva.user_id = str(uuid.uuid4())
+        mock_reserva.asignee = "Test Asignee"
         mock_service.confirm_reservation.return_value = (mock_reserva, None)
 
+        # Mock del espacio
+        mock_space_obj = MagicMock()
+        mock_space_obj.plano_id = uuid.uuid4()
+        mock_space.query.get.return_value = mock_space_obj
+
+        # Mock del perfil de usuario
+        mock_profile = MagicMock()
+        mock_profile.company = "Test Company"
+        mock_user_profile.query.filter_by.return_value.first.return_value = mock_profile
+
         response = client.post(
-            f"/api/reservas/{uuid.uuid4()}/confirm",
+            f"/api/reservas/{reservation_id}/confirm",
             headers=admin_auth_headers,
         )
 
