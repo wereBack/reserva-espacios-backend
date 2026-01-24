@@ -55,6 +55,7 @@ class Zone(Polygon):
             width=data.get("width"),
             height=data.get("height"),
             color=data.get("color"),
+            rotation=data.get("rotation", 0),
             price=data.get("price"),
             plano_id=data.get("plano_id"),
             name=data.get("name"),

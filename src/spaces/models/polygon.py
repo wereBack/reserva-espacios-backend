@@ -32,6 +32,7 @@ class Polygon(db.Model):
     width = db.Column(db.Numeric(10, 2), nullable=False)  # Ancho
     height = db.Column(db.Numeric(10, 2), nullable=False)  # Alto
     color = db.Column(db.String(7), nullable=False)  # Color en formato hex (#RRGGBB)
+    rotation = db.Column(db.Numeric(5, 2), nullable=False, default=0)  # Rotación en grados (0-360)
     price = db.Column(db.Numeric(10, 2), nullable=True)  # Precio indicado para la figura
     plano_id = db.Column(UUID_TYPE, db.ForeignKey("planos.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
@@ -70,6 +71,7 @@ class Polygon(db.Model):
             "width": float(self.width) if self.width is not None else 0.0,
             "height": float(self.height) if self.height is not None else 0.0,
             "color": self.color,
+            "rotation": float(self.rotation) if self.rotation is not None else 0.0,
             "price": float(self.price) if self.price is not None else None,
             "plano_id": str(self.plano_id) if self.plano_id else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -105,6 +107,7 @@ class Polygon(db.Model):
             width=data.get("width"),
             height=data.get("height"),
             color=data.get("color"),
+            rotation=data.get("rotation", 0),
             price=data.get("price"),
             plano_id=data.get("plano_id"),
         )

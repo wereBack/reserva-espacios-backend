@@ -99,6 +99,8 @@ def update_space(space_id):
             space.height = data["height"]
         if "color" in data:
             space.color = data["color"]
+        if "rotation" in data:
+            space.rotation = data["rotation"]
         # Zone association
         if "zone_id" in data:
             space.zone_id = data["zone_id"]
@@ -351,6 +353,8 @@ def update_zone(zone_id):
             zone.width = data["width"]
         if "height" in data:
             zone.height = data["height"]
+        if "rotation" in data:
+            zone.rotation = data["rotation"]
 
         db.session.commit()
         return jsonify(zone.to_dict()), 200
