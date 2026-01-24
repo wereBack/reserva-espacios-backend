@@ -23,7 +23,7 @@ gevent==25.4.2
 gevent-websocket==0.10.1
 
 # AWS S3
-boto3==1.42.21
+boto3==1.42.34
 
 # Autenticacion JWT Keycloak
 PyJWT==2.10.1
