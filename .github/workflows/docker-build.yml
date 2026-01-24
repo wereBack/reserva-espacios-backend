@@ -69,6 +69,64 @@ jobs:
           script: |
             cd /home/ec2-user/reserva-espacios-backend
             
+            # Create production docker-compose file
+            cat <<EOF > docker-compose.prod.yaml
+            services:
+              postgres-db:
+                image: postgres:18-alpine
+                container_name: reserva_espacios_db
+                environment:
+                  POSTGRES_DB: reserva_espacios_um
+                  POSTGRES_USER: postgres
+                  POSTGRES_PASSWORD: postgres
+                ports:
+                  - "5432:5432"
+                volumes:
+                  - postgres_data:/var/lib/postgresql/data
+                  - ./init-keycloak-db.sql:/docker-entrypoint-initdb.d/init-keycloak-db.sql
+                healthcheck:
+                  test: ["CMD-SHELL", "pg_isready -U postgres"]
+                  interval: 5s
+                  timeout: 5s
+                  retries: 5
+
+              keycloak:
+                image: quay.io/keycloak/keycloak:26.0
+                container_name: keycloak
+                command: start-dev --import-realm
+                environment:
+                  KC_DB: postgres
+                  KC_DB_URL: jdbc:postgresql://postgres-db:5432/keycloak
+                  KC_DB_USERNAME: postgres
+                  KC_DB_PASSWORD: postgres
+                  KEYCLOAK_ADMIN: admin
+                  KEYCLOAK_ADMIN_PASSWORD: admin
+                  KC_HTTP_CORS_ENABLED: "true"
+                volumes:
+                  - ./reserva-espacios-realm.json:/opt/keycloak/data/import/realm.json
+                  - ./keycloak-theme/reserva-espacios:/opt/keycloak/themes/reserva-espacios
+                ports:
+                  - "8080:8080"
+                depends_on:
+                  postgres-db:
+                    condition: service_healthy
+
+              backend-app:
+                container_name: reserva-espacios
+                restart: unless-stopped
+                image: ghcr.io/${{ github.repository }}:latest
+                env_file:
+                  - ./.env
+                ports:
+                  - "5001:5001"
+                depends_on:
+                  postgres-db:
+                    condition: service_healthy
+
+            volumes:
+              postgres_data:
+            EOF
+            
             # Login to GHCR
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
@@ -76,14 +134,14 @@ jobs:
             docker pull ghcr.io/${{ github.repository }}:latest
             
             # Update docker-compose to use the new image
-            docker compose pull
-            docker compose up -d --force-recreate backend-app
+            docker compose -f docker-compose.prod.yaml pull
+            docker compose -f docker-compose.prod.yaml up -d --force-recreate backend-app
             
             # Wait for container to be ready
             sleep 5
             
             # Run database migrations
-            docker compose exec -T backend-app alembic upgrade head
+            docker compose -f docker-compose.prod.yaml exec -T backend-app alembic upgrade head
             
             # Cleanup old images
             docker image prune -f
