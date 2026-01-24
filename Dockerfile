@@ -8,7 +8,7 @@ WORKDIR $APP_HOME
 
 # Instalo libpq-dev (para psycopg2-binary) y gcc (para compilar algunas dependencias de Python)
 # Luego limpio la caché de apt para reducir el tamaño de la imagen
-RUN apt-get update && apt-get install -y libpq-dev gcc \
+RUN apt-get update && apt-get install -y libpq-dev gcc file make \
     && rm -rf /var/lib/apt/lists/*
 
 # Copio el codigo
