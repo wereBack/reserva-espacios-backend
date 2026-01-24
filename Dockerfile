@@ -1,0 +1,28 @@
+FROM python:3.13-slim
+
+# Variables de entorno
+ENV APP_HOME=/app
+
+# Directorio de trabajo
+WORKDIR $APP_HOME
+
+# Instalo libpq-dev (para psycopg2-binary) y gcc (para compilar algunas dependencias de Python)
+# Luego limpio la caché de apt para reducir el tamaño de la imagen
+RUN apt-get update && apt-get install -y libpq-dev gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copio el codigo
+COPY ./src $APP_HOME
+
+# Copio el archivo de dependencias
+COPY ./requirements.txt $APP_HOME
+
+
+# Instalo las dependencias
+RUN pip install -r ./requirements.txt
+
+# Expongo el puerto
+EXPOSE 5001
+
+# Ejecuto la aplicacion
+CMD ["python", "app.py"]
