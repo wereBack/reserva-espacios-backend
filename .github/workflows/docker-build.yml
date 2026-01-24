@@ -79,5 +79,11 @@ jobs:
             docker compose pull
             docker compose up -d --force-recreate backend-app
             
+            # Wait for container to be ready
+            sleep 5
+            
+            # Run database migrations
+            docker compose exec -T backend-app alembic upgrade head
+            
             # Cleanup old images
             docker image prune -f
