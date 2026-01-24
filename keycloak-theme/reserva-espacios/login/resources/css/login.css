@@ -379,14 +379,38 @@
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 480px) {
-    .login-pf .card-pf {
-        padding: 36px 24px;
-        margin: 16px;
-        border-radius: 16px;
+    .login-pf .container-fluid {
+        padding: 16px;
+        align-items: flex-start;
+        /* Evita que quede centrado verticalmente si hay poco espacio (teclado) */
+        padding-top: max(40px, env(safe-area-inset-top));
+        /* Espacio seguro para notch */
     }
 
-    #kc-header-wrapper {
-        font-size: 20px;
+    .login-pf .card-pf {
+        padding: 24px 20px;
+        margin: 0;
+        /* El padding del container da el margen */
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 60, 162, 0.1);
+        /* Sombra más suave en móvil */
+        width: 100%;
+        max-width: 100%;
+    }
+
+    #kc-header {
+        margin-bottom: 24px;
+    }
+
+    #kc-header-wrapper::before {
+        width: 160px;
+        /* Logo más chico */
+        height: 40px;
+    }
+
+    .login-pf #kc-page-title {
+        margin-bottom: 20px;
+        font-size: 14px;
     }
 
     .login-pf input[type="text"],
@@ -395,6 +419,11 @@
         padding: 12px 14px;
         font-size: 16px;
         /* Evita zoom en iOS */
+    }
+
+    .login-pf .card-pf::after {
+        margin-top: 24px;
+        padding-top: 16px;
     }
 }
 
