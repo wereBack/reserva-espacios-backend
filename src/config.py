@@ -3,7 +3,6 @@ Configuración de la aplicación usando Pydantic v2
 Documentación de Pydantic: https://docs.pydantic.dev/2.12/concepts/pydantic_settings/
 """
 
-
 from pydantic import Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings as PydanticBaseSettings
 
