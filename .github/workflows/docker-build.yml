@@ -81,8 +81,8 @@ jobs:
             docker compose -f docker-compose.prod.yaml pull
             docker compose -f docker-compose.prod.yaml up -d --force-recreate backend-app
             
-            # Restart nginx to apply any config changes
-            docker compose -f docker-compose.prod.yaml restart nginx
+            # Reload nginx config
+            docker compose -f docker-compose.prod.yaml exec -T nginx nginx -s reload || docker compose -f docker-compose.prod.yaml restart nginx
             
             # Wait for containers to be ready
             sleep 5
