@@ -1,0 +1,59 @@
+services:
+  # Keycloak - Autenticación
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: keycloak
+    command: start-dev --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: ${KC_DB_URL}
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME: auth.reserva-espacios-um.space
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+    volumes:
+      - ./reserva-espacios-realm.json:/opt/keycloak/data/import/realm.json
+      - ./keycloak-theme/reserva-espacios:/opt/keycloak/themes/reserva-espacios
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  # Backend - Flask API
+  backend-app:
+    image: ghcr.io/wereback/reserva-espacios-backend:latest
+    container_name: reserva-espacios
+    env_file:
+      - ./.env
+    expose:
+      - "5001"
+    restart: unless-stopped
+
+  # Nginx - Reverse Proxy + Frontend
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/frontend:/usr/share/nginx/html:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - backend-app
+      - keycloak
+    restart: unless-stopped
+
+  # Certbot - SSL Certificates
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    restart: unless-stopped
