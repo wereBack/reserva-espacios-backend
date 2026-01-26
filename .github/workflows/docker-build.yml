@@ -78,17 +78,17 @@ jobs:
             docker pull ghcr.io/${{ github.repository }}:latest
             
             # Update docker-compose to use the new image
-            docker compose pull
-            docker compose up -d --force-recreate backend-app
+            docker compose -f docker-compose.prod.yaml pull
+            docker compose -f docker-compose.prod.yaml up -d --force-recreate backend-app
             
             # Restart nginx to apply any config changes
-            docker compose restart nginx
+            docker compose -f docker-compose.prod.yaml restart nginx
             
             # Wait for containers to be ready
             sleep 5
             
             # Run database migrations
-            docker compose exec -T backend-app alembic upgrade head
+            docker compose -f docker-compose.prod.yaml exec -T backend-app alembic upgrade head
             
             # Cleanup old images
             docker image prune -f
