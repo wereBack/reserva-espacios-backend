@@ -44,7 +44,7 @@ def proxy_image(s3_key):
     return Response(
         file_bytes,
         mimetype=content_type,
-        headers={"Cache-Control": "public, max-age=31536000", "Access-Control-Allow-Origin": "*"},
+        headers={"Cache-Control": "public, max-age=31536000"},
     )
 
 
