@@ -8,7 +8,7 @@ from gevent import monkey
 monkey.patch_all()
 
 from flask import Flask, jsonify, request
-from flask_cors import CORS
+# from flask_cors import CORS  # CORS manejado por nginx
 
 from config import settings
 from database import db
@@ -66,18 +66,21 @@ def create_app(config_instance=None):
 
     # Inicializar extensiones
     db.init_app(app)
-    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+    
+    # CORS deshabilitado - manejado por nginx
+    # CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
     # Handler global para CORS - manejar preflight OPTIONS
-    @app.before_request
-    def handle_preflight():
-        if request.method == "OPTIONS":
-            response = app.make_default_options_response()
-            response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            return response
+    # DESHABILITADO - nginx maneja CORS
+    # @app.before_request
+    # def handle_preflight():
+    #     if request.method == "OPTIONS":
+    #         response = app.make_default_options_response()
+    #         response.headers["Access-Control-Allow-Origin"] = "*"
+    #         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    #         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    #         response.headers["Access-Control-Allow-Credentials"] = "true"
+    #         return response
 
     # Inicializar WebSocket
     init_socketio(app)
