@@ -81,7 +81,10 @@ jobs:
             docker compose pull
             docker compose up -d --force-recreate backend-app
             
-            # Wait for container to be ready
+            # Restart nginx to apply any config changes
+            docker compose restart nginx
+            
+            # Wait for containers to be ready
             sleep 5
             
             # Run database migrations
