@@ -7,9 +7,9 @@ from gevent import monkey
 
 monkey.patch_all()
 
-from flask import Flask, jsonify, request
-# from flask_cors import CORS  # CORS manejado por nginx
+from flask import Flask, jsonify
 
+# from flask_cors import CORS  # CORS manejado por nginx
 from config import settings
 from database import db
 from eventos.routes import eventos_bp
@@ -66,7 +66,7 @@ def create_app(config_instance=None):
 
     # Inicializar extensiones
     db.init_app(app)
-    
+
     # CORS deshabilitado - manejado por nginx
     # CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
