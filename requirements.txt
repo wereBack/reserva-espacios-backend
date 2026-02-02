@@ -27,5 +27,5 @@ boto3==1.42.34
 
 # Autenticacion JWT Keycloak
 PyJWT==2.10.1
-cryptography==46.0.3
+cryptography==46.0.4
 requests==2.32.5
