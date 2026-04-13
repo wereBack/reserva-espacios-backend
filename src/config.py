@@ -35,13 +35,15 @@ class Settings(PydanticBaseSettings):
     DATABASE_POOL_SIZE: int = Field(default=5, ge=1, le=20, description="Tamaño del pool de conexiones")
     DATABASE_MAX_OVERFLOW: int = Field(default=10, ge=0, le=30, description="Overflow máximo del pool")
 
-    # Configuración de AWS S3
-    AWS_ACCESS_KEY_ID: str = Field(default="AKIAIOSFODNN7EXAMPLE", description="AWS Access Key ID")
+    # Configuración de storage de archivos (compatible con AWS S3, DigitalOcean Spaces y otros)
+    AWS_ACCESS_KEY_ID: str = Field(default="AKIAIOSFODNN7EXAMPLE", description="Access Key ID")
     AWS_SECRET_ACCESS_KEY: str = Field(
-        default="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", description="AWS Secret Access Key"
+        default="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", description="Secret Access Key"
     )
-    AWS_S3_BUCKET_NAME: str = Field(default="reserva-espacios-um", description="Nombre del bucket S3")
-    AWS_S3_REGION: str = Field(default="us-east-1", description="Región de AWS S3")
+    AWS_S3_BUCKET_NAME: str = Field(default="reserva-espacios-um", description="Nombre del bucket / Space")
+    AWS_S3_REGION: str = Field(default="us-east-1", description="Región (ej: us-east-1, nyc3, sfo3)")
+    # Si se define, boto3 apunta a ese endpoint en vez de AWS (usar para DigitalOcean Spaces u otros compatibles)
+    S3_ENDPOINT_URL: str | None = Field(default=None, description="Endpoint URL custom (DigitalOcean Spaces, etc.)")
 
     # Configuración de Keycloak para autenticación
     # KEYCLOAK_URL: URL interna para conectarse a Keycloak (obtener claves publicas)

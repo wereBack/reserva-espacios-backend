@@ -12,13 +12,19 @@ from config import settings
 
 
 def get_s3_client():
-    """Obtiene un cliente S3 configurado."""
-    return boto3.client(
-        "s3",
-        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        region_name=settings.AWS_S3_REGION,
-    )
+    """Obtiene un cliente S3 configurado.
+
+    Compatible con AWS S3 y servicios con API compatible (ej: DigitalOcean Spaces).
+    Si S3_ENDPOINT_URL está definido en el .env, apunta a ese endpoint en vez de AWS.
+    """
+    kwargs = {
+        "aws_access_key_id": settings.AWS_ACCESS_KEY_ID,
+        "aws_secret_access_key": settings.AWS_SECRET_ACCESS_KEY,
+        "region_name": settings.AWS_S3_REGION,
+    }
+    if settings.S3_ENDPOINT_URL:
+        kwargs["endpoint_url"] = settings.S3_ENDPOINT_URL
+    return boto3.client("s3", **kwargs)
 
 
 def get_file(s3_key: str) -> tuple[bytes | None, str | None, str | None]:
@@ -78,8 +84,15 @@ def upload_file(file_data, original_filename: str, content_type: str = None) -> 
 
         s3_client.upload_fileobj(file_obj, settings.AWS_S3_BUCKET_NAME, unique_filename, ExtraArgs=extra_args)
 
-        # Construir URL publica
-        url = f"https://{settings.AWS_S3_BUCKET_NAME}.s3.{settings.AWS_S3_REGION}.amazonaws.com/{unique_filename}"
+        # Construir URL publica según el proveedor
+        if settings.S3_ENDPOINT_URL:
+            # DigitalOcean Spaces u otros compatibles
+            # Formato: https://<bucket>.<region>.digitaloceanspaces.com/<key>
+            base = settings.S3_ENDPOINT_URL.replace("https://", f"https://{settings.AWS_S3_BUCKET_NAME}.")
+            url = f"{base}/{unique_filename}"
+        else:
+            # AWS S3
+            url = f"https://{settings.AWS_S3_BUCKET_NAME}.s3.{settings.AWS_S3_REGION}.amazonaws.com/{unique_filename}"
         return url
 
     except ClientError as e:

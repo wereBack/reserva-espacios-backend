@@ -1,231 +1,298 @@
 # Reserva Espacios Backend
 
-API REST para el sistema de reserva de espacios desarrollada con Flask y SQLAlchemy.
+API REST para el sistema de reserva de espacios para la Feria de Empleo, desarrollada con Flask, SQLAlchemy y Keycloak.
 
-## Requisitos
+## Requisitos previos
 
-- Python 3.13+
-- PostgreSQL (base de datos principal)
-- Docker (opcional)
+- [Docker](https://www.docker.com/) y Docker Compose
+- Node.js 18+ (solo para el frontend)
 
-## Instalación Local
+El backend, la base de datos y Keycloak corren todos dentro de Docker, no es necesario instalar Python localmente.
 
-1. Clonar el repositorio:
-```bash
-git clone <url-del-repositorio>
-cd reserva-espacios-backend
-```
+---
 
-2. Instalar dependencias:
-```bash
-pip install -r requirements.txt
-```
+## Cómo levantar el proyecto
 
-## Configuración
+### 1. Configurar variables de entorno
 
-La aplicación utiliza Pydantic Settings ([documentación](https://docs.pydantic.dev/2.12/concepts/pydantic_settings)) para la configuración. Puedes crear un archivo `.env` en la raíz del proyecto:
+Crear un archivo `.env` en la raíz de `reserva-espacios-backend/` con el siguiente contenido:
 
 ```env
-# Configuración de la aplicación
+# Aplicación
 FLASK_APP_NAME=Reserva Espacios Backend
 FLASK_DEBUG=True
-FLASK_SECRET_KEY=tu-clave-secreta-aqui
+FLASK_SECRET_KEY=cambia-esto-por-un-string-secreto
 
-# Configuración del servidor
+# Servidor
 FLASK_HOST=0.0.0.0
-FLASK_PORT=5000
+FLASK_PORT=5001
 
-# Configuración de base de datos
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/reserva_espacios_um
+# Base de datos (usar estos valores si se usa Docker Compose)
+DATABASE_URL=postgresql://postgres:postgres@postgres-db:5432/reserva_espacios_um
 DATABASE_ECHO=False
 DATABASE_POOL_SIZE=5
 DATABASE_MAX_OVERFLOW=10
 
-# Configuración de logging
-FLASK_LOG_LEVEL=INFO
+# Keycloak
+KEYCLOAK_URL=http://keycloak:8080
+KEYCLOAK_REALM=reserva-espacios
+KEYCLOAK_CLIENT_ID=front-admin
+KEYCLOAK_ISSUER_URL=http://localhost:8080
+
+# Storage de archivos (ver sección "Configurar almacenamiento" más abajo)
+AWS_ACCESS_KEY_ID=tu-access-key
+AWS_SECRET_ACCESS_KEY=tu-secret-key
+AWS_S3_BUCKET_NAME=nombre-de-tu-bucket
+AWS_S3_REGION=sa-east-1
 ```
 
-### Variables de entorno disponibles
+> **Importante:** nunca subas el archivo `.env` al repositorio. Asegurate de que esté en el `.gitignore`.
 
-- `FLASK_APP_NAME`: Nombre de la aplicación (default: "Reserva Espacios Backend")
-- `FLASK_DEBUG`: Modo debug (default: False)
-- `FLASK_SECRET_KEY`: Clave secreta para la aplicación
-- `FLASK_HOST`: Host del servidor (default: "0.0.0.0")
-- `FLASK_PORT`: Puerto del servidor (default: 5000)
-- `DATABASE_URL`: URL de conexión a PostgreSQL (default: "postgresql://postgres:postgres@localhost:5432/reserva_espacios_um")
-- `DATABASE_ECHO`: Mostrar queries SQL en logs (default: False)
-- `DATABASE_POOL_SIZE`: Tamaño del pool de conexiones (default: 5)
-- `DATABASE_MAX_OVERFLOW`: Overflow máximo del pool (default: 10)
-- `FLASK_LOG_LEVEL`: Nivel de logging (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+### 2. Levantar con Docker Compose
 
-## Ejecución
-
-### Local
 ```bash
-python src/app.py
+cd reserva-espacios-backend
+docker compose up
 ```
 
-### Docker
+Esto levanta automáticamente:
+
+| Servicio    | Puerto | Descripción                          |
+|-------------|--------|--------------------------------------|
+| PostgreSQL  | 5432   | Base de datos principal              |
+| Keycloak    | 8080   | Servidor de autenticación            |
+| Backend API | 5001   | API REST de Flask                    |
+
+Keycloak importa el realm `reserva-espacios` automáticamente desde `reserva-espacios-realm.json`.
+
+### 3. Levantar el frontend
+
 ```bash
-docker-compose up
+cd reserva-espacios-front
+cp .env.example .env   # o crear el archivo manualmente (ver abajo)
+npm install
+npm run dev
 ```
 
-La aplicación estará disponible en `http://localhost:5000`
+El frontend queda disponible en `http://localhost:5173`.
 
-## Endpoints Disponibles
+**Variables de entorno del frontend (`.env`):**
 
-### `GET /health`
-Verificación del estado del servicio y conectividad con la base de datos.
+```env
+VITE_KEYCLOAK_URL=http://localhost:8080
+VITE_KEYCLOAK_REALM=reserva-espacios
+VITE_KEYCLOAK_CLIENT_ID=front-admin
+VITE_API_BASE=http://localhost:5001
+```
 
-**Respuesta:**
-```json
-{
-  "status": "healthy",
-  "message": "Servicio funcionando correctamente",
-  "uptime": "running",
-  "database": {
-    "status": "healthy",
-    "message": "Base de datos conectada correctamente"
-  },
-  "timestamp": "2024-01-01T12:00:00Z"
+---
+
+## Configurar almacenamiento de archivos
+
+El sistema usa un servicio de storage para guardar las imágenes de los planos. Soporta tres proveedores:
+
+| Proveedor | Cambios de código | Cambios de config |
+|---|---|---|
+| **AWS S3** | Ninguno | Solo `.env` |
+| **DigitalOcean Spaces** | Ninguno | Solo `.env` |
+| **Azure Blob Storage** | 3 archivos | `.env` |
+
+---
+
+### Opción A — AWS S3
+
+1. Crear un bucket S3 en AWS.
+2. Crear un usuario IAM con permisos `s3:PutObject` y `s3:GetObject` sobre ese bucket.
+3. Configurar el `.env`:
+
+```env
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_S3_BUCKET_NAME=nombre-del-bucket
+AWS_S3_REGION=us-east-1
+# S3_ENDPOINT_URL no se define (dejar vacío o comentado)
+```
+
+---
+
+### Opción B — DigitalOcean Spaces
+
+DigitalOcean Spaces tiene una API compatible con S3, por lo que **no requiere cambios de código**. Solo hay que agregar `S3_ENDPOINT_URL` al `.env`:
+
+1. Crear un Space en DigitalOcean y obtener las credenciales (Access Key + Secret Key) desde **API → Spaces Keys**.
+2. Configurar el `.env`:
+
+```env
+AWS_ACCESS_KEY_ID=clave-de-spaces
+AWS_SECRET_ACCESS_KEY=secret-de-spaces
+AWS_S3_BUCKET_NAME=nombre-del-space
+AWS_S3_REGION=nyc3   # la región del Space: nyc3, sfo3, ams3, sgp1, etc.
+S3_ENDPOINT_URL=https://nyc3.digitaloceanspaces.com   # reemplazar con la región correcta
+```
+
+Las URLs públicas generadas tendrán el formato `https://<bucket>.<region>.digitaloceanspaces.com/<key>`.
+
+---
+
+### Opción C — Azure Blob Storage
+
+Azure no es compatible con la API de S3, por lo que requiere cambios en **3 archivos**:
+
+#### 1. `requirements.txt`
+
+Reemplazar:
+```
+boto3==1.42.34
+```
+Por:
+```
+azure-storage-blob==12.x.x
+```
+
+#### 2. `src/services/s3_service.py`
+
+Reemplazar toda la implementación:
+
+```python
+import uuid
+from io import BytesIO
+from azure.storage.blob import BlobServiceClient, ContentSettings
+from config import settings
+
+def _get_container_client():
+    client = BlobServiceClient.from_connection_string(settings.AZURE_STORAGE_CONNECTION_STRING)
+    return client.get_container_client(settings.AZURE_CONTAINER_NAME)
+
+def get_file(blob_key: str) -> tuple[bytes | None, str | None, str | None]:
+    try:
+        blob_client = _get_container_client().get_blob_client(blob_key)
+        data = blob_client.download_blob().readall()
+        props = blob_client.get_blob_properties()
+        content_type = props.content_settings.content_type or "application/octet-stream"
+        return data, content_type, None
+    except Exception as e:
+        return None, None, f"Error al obtener archivo: {e}"
+
+def upload_file(file_data, original_filename: str, content_type: str = None) -> str:
+    extension = original_filename.rsplit(".", 1)[-1] if "." in original_filename else ""
+    blob_name = f"planos/{uuid.uuid4()}.{extension}" if extension else f"planos/{uuid.uuid4()}"
+    file_bytes = file_data.read()
+    try:
+        blob_client = _get_container_client().get_blob_client(blob_name)
+        cs = ContentSettings(content_type=content_type) if content_type else None
+        blob_client.upload_blob(BytesIO(file_bytes), content_settings=cs)
+        service = BlobServiceClient.from_connection_string(settings.AZURE_STORAGE_CONNECTION_STRING)
+        url = f"https://{service.account_name}.blob.core.windows.net/{settings.AZURE_CONTAINER_NAME}/{blob_name}"
+        return url
+    except Exception as e:
+        raise Exception(f"Error al subir archivo: {e}")
+```
+
+#### 3. `reserva-espacios-front/src/utils/imageProxy.ts`
+
+Actualizar el regex para detectar URLs de Azure:
+
+```typescript
+// Reemplazar esta línea:
+const S3_URL_PATTERN = /^https:\/\/([^.]+)\.s3\.([^.]+)\.amazonaws\.com\/(.+)$/;
+
+// Por esta:
+const AZURE_URL_PATTERN = /^https:\/\/([^.]+)\.blob\.core\.windows\.net\/([^/]+)\/(.+)$/;
+
+// Y actualizar toProxyUrl:
+export function toProxyUrl(url: string): string {
+    if (!url || url.startsWith('data:') || url.startsWith(API_BASE)) return url;
+    const match = url.match(AZURE_URL_PATTERN);
+    if (match) {
+        const blobKey = `${match[2]}/${match[3]}`;
+        return `${API_BASE}/planos/image/${blobKey}`;
+    }
+    return url;
 }
 ```
 
-### `GET /spaces`
-Endpoints relacionados con espacios (en desarrollo).
+#### Variables de entorno para Azure
 
-**Respuesta:**
-```json
-{
-  "message": "Hello World!",
-  "status": "success"
-}
+Reemplazar las variables `AWS_*` en el `.env` por:
+
+```env
+AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net
+AZURE_CONTAINER_NAME=nombre-del-contenedor
 ```
 
-## Modelos de Datos
+También agregar estas dos variables al modelo `Settings` en `src/config.py`:
 
-### Zone (Zona)
-Representa una zona donde se ubican los espacios:
-- `id`: Identificador único
-- `name`: Nombre de la zona
-- `description`: Descripción opcional
-- `color`: Color en formato hex (#RRGGBB)
-- `price`: Precio base para la zona
-- `active`: Estado activo/inactivo
-- `created_at`, `updated_at`: Timestamps
+```python
+AZURE_STORAGE_CONNECTION_STRING: str | None = Field(default=None)
+AZURE_CONTAINER_NAME: str | None = Field(default=None)
+```
 
-### Space (Espacio)
-Representa un espacio físico disponible para reservar:
-- `id`: Identificador único
-- `name`: Nombre del espacio
-- `zone_id`: ID de la zona a la que pertenece
-- `price`: Precio del espacio
-- `width`: Ancho en píxeles
-- `height`: Alto en píxeles
-- `x_coordinate`, `y_coordinate`: Posición en el plano
-- `active`: Estado activo/inactivo
-- `created_at`, `updated_at`: Timestamps
+> El resto del sistema (rutas, proxy de imágenes, canvas del frontend) **no necesita cambios** porque el storage está abstraído detrás de `s3_service.py`.
 
-## Estructura del Proyecto
+---
+
+## Estructura del proyecto
 
 ```
 reserva-espacios-backend/
 ├── src/
-│   ├── app.py              # Aplicación Flask principal
-│   ├── config.py           # Configuración con Pydantic
-│   ├── database.py         # Configuración de SQLAlchemy
-│   ├── health/
-│   │   └── routes.py       # Endpoints de health-check
-│   ├── spaces/
-│   │   ├── models/
-│   │   │   ├── space.py    # Modelo Space
-│   │   │   └── zone.py     # Modelo Zone
-│   │   └── routes.py       # Endpoints de espacios
-│   └── utils/
-│       └── db_utils.py     # Utilidades de base de datos
-├── docker-compose.yaml     # Configuración de Docker
-├── Dockerfile.dev          # Imagen de Docker para desarrollo
-├── requirements.txt        # Dependencias de Python
-└── README.md              # Este archivo
+│   ├── app.py                  # Punto de entrada Flask
+│   ├── config.py               # Variables de entorno (Pydantic Settings)
+│   ├── database.py             # Configuración SQLAlchemy
+│   ├── services/
+│   │   └── s3_service.py       # Abstracción de storage de archivos
+│   ├── auth/                   # Decoradores JWT / Keycloak
+│   ├── eventos/                # Gestión de eventos
+│   ├── planos/                 # Planos de planta + endpoints de imágenes
+│   ├── spaces/                 # Espacios individuales
+│   ├── zones/                  # Zonas
+│   ├── reservas/               # Reservas
+│   ├── user_profiles/          # Perfiles de usuario
+│   ├── websocket/              # WebSocket (Flask-SocketIO)
+│   └── alembic/                # Migraciones de base de datos
+├── keycloak-theme/             # Tema personalizado de Keycloak
+├── reserva-espacios-realm.json # Configuración del realm de Keycloak
+├── docker-compose.yaml
+├── Dockerfile.dev
+├── requirements.txt
+└── .env                        # No subir al repositorio
 ```
 
-## Desarrollo
+---
 
-El proyecto incluye configuraciones específicas para diferentes entornos:
+## Migraciones de base de datos
 
-- **Desarrollo**: `DevelopmentSettings` (DEBUG=True, LOG_LEVEL=DEBUG)
-- **Producción**: `ProductionSettings` (DEBUG=False, LOG_LEVEL=INFO)
-- **Testing**: `TestingSettings` (Base de datos en memoria SQLite)
-
-Para usar una configuración específica, establece la variable de entorno `FLASK_ENVIRONMENT`:
+Las migraciones se gestionan con Alembic:
 
 ```bash
-export FLASK_ENVIRONMENT=production
-python src/app.py
-```
-
-## Base de Datos
-
-La aplicación utiliza PostgreSQL como base de datos principal con SQLAlchemy como ORM. Las migraciones se gestionan con Alembic.
-
-### Migraciones con Alembic
-
-El proyecto utiliza [Alembic](https://alembic.sqlalchemy.org/) para gestionar las migraciones de la base de datos. Alembic está configurado para usar la variable de entorno `DATABASE_URL`.
-
-#### Comandos básicos
-
-```bash
-# Navegar al directorio src
 cd src
 
-# Generar migración automática (detecta cambios en modelos)
-alembic revision --autogenerate -m "Descripción del cambio"
-
-# Aplicar migraciones pendientes
+# Aplicar todas las migraciones pendientes
 alembic upgrade head
+
+# Generar migración a partir de cambios en modelos
+alembic revision --autogenerate -m "descripción"
 
 # Ver estado actual
 alembic current
-
-# Ver historial de migraciones
-alembic history
-
-# Revertir a migración anterior
-alembic downgrade -1
-
-# Revertir a migración específica
-alembic downgrade <revision_id>
 ```
 
-#### Flujo de trabajo típico
+---
 
-1. Modificar/agregar modelo
-2. **Si es un modelo nuevo**: Importarlo en `src/alembic/env.py`
-3. **Generar migración**: `alembic revision --autogenerate -m "Descripción"`
-4. **Revisar archivo generado** en `alembic/versions/`
-5. **Aplicar migración**: `alembic upgrade head`
+## Variables de entorno — referencia completa
 
-#### Importar modelos nuevos
-
-Cuando agregues un nuevo modelo, debes importarlo en `alembic/env.py` para que Alembic lo detecte:
-
-```python
-# En src/alembic/env.py
-from spaces.models.space import Space
-from spaces.models.zone import Zone
-from modulox.models.nuevo_modelo import NuevoModelo  # ← Agregar aquí
-```
-
-#### Documentación oficial
-
-- [Alembic Documentation](https://alembic.sqlalchemy.org/)
-- [Tutorial de Alembic](https://alembic.sqlalchemy.org/en/latest/tutorial.html)
-- [Autogenerate Documentation](https://alembic.sqlalchemy.org/en/latest/autogenerate.html)
-
-### Utilidades de Base de Datos
-
-El módulo `utils/db_utils.py` proporciona funciones para:
-- Verificar conectividad con la base de datos
-- Obtener información del pool de conexiones
-- Inicializar y eliminar tablas
-- Ejecutar consultas SQL de forma segura
+| Variable | Descripción | Default |
+|---|---|---|
+| `FLASK_SECRET_KEY` | Clave secreta de la app | — |
+| `FLASK_DEBUG` | Modo debug | `False` |
+| `FLASK_HOST` | Host del servidor | `0.0.0.0` |
+| `FLASK_PORT` | Puerto del servidor | `5001` |
+| `DATABASE_URL` | URL de conexión PostgreSQL | — |
+| `KEYCLOAK_URL` | URL interna de Keycloak (dentro de Docker) | — |
+| `KEYCLOAK_REALM` | Nombre del realm | `reserva-espacios` |
+| `KEYCLOAK_CLIENT_ID` | Client ID de Keycloak | `front-admin` |
+| `KEYCLOAK_ISSUER_URL` | URL pública de Keycloak (para validar tokens) | — |
+| `AWS_ACCESS_KEY_ID` | Access key de AWS | — |
+| `AWS_SECRET_ACCESS_KEY` | Secret key de AWS | — |
+| `AWS_S3_BUCKET_NAME` | Nombre del bucket S3 | — |
+| `AWS_S3_REGION` | Región de AWS | `sa-east-1` |
